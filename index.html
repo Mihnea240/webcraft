@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<link rel="icon" type="image/svg+xml" href="/vite.svg" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>WebGL</title>
+
+	<script type="module" src="./minecraft-context.js"></script>
+	<script type="module" src="./minecraft-world.js"></script>
+	<script type="module" src="./minecraft-player.js"></script>
+
+	<style>
+		body, html {
+			margin: 0;
+			padding: 0;
+			width: 100%;
+			height: 100%;
+			box-sizing: border-box;
+			overflow-y: hidden;
+		}
+
+		minecraft-context, minecraft-world, minecraft-player {
+			overflow: hidden;
+			display: block;	
+			width: 100%;
+			height: 100%;
+		}
+	</style>
+</head>
+
+<body>
+	<minecraft-context>
+		<minecraft-world>
+			<minecraft-player></minecraft-player>
+		</minecraft-world>
+	</minecraft-context>
+</body>
+
+</html>

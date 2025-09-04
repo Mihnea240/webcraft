@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "types": ["@webgpu/types"]
+  },
+  "include": [
+    "**/*.js",
+    "**/*.mjs"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
