@@ -1,5 +1,4 @@
-import ResourceLoader from "./minecraft/resource-loader.js";
-import BlockModel from "./minecraft/block_model/blocks.js";
+import ResourceLoader from "../engine/resource-loader.js";
 
 export default class MinecraftContext extends HTMLElement {
 	static css = (function () {

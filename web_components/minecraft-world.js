@@ -1,6 +1,4 @@
-import World from "./minecraft/world";
-import Player from "./minecraft/player";
-
+import World from "../engine/world.js";
  
 export default class MinecraftWorld extends HTMLElement {
 	static css = (function () {

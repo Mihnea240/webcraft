@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { Array3D } from "./memory_management.js";
-import BlockPallet from "./block_pallet";
+import { Array3D } from "../utils/memory_management.js";
+import BlockPallet from "./block_pallet.js";
 import BlockState from "./block_state.js";
 import Faces from "./faces.js";
 import BlockModel from "../block_model/blocks.js";
@@ -13,12 +13,15 @@ export default class Chunk {
 	static PENDING = 2;
 	static DIRTY = 3; // Marked for remeshing
 	constructor(x, y, z) {
-		this.data = new Array3D(Chunk.size);
-		this.position = new Int32Array([x, y, z]);
+		this.voxels = new Array3D(Chunk.size);
+		this.voxel_to_first_quad = new Array3D(Chunk.size);
 		this.pallet = new BlockPallet();
-
-		// /**@type {THREE.MeshBasicMaterial | null} */
-		// this.mesh = null;
+		
+		this.gpu_data = new Float32Array(3);
+		this.position = new Float32Array(this.gpu_data.buffer, 0, 3);
+		this.position[0] = x;
+		this.position[1] = y;
+		this.position[2] = z;
 
 		this.draw_details = {
 			quad_offset: 0,
@@ -41,25 +44,25 @@ export default class Chunk {
 	}
 	
 	getData(x, y, z) {
-		return this.data.get(x, y, z);
+		return this.voxels.get(x, y, z);
 	}
 
 	getDataAtIndex(index) {
-		return this.data.data[index];
+		return this.voxels.data[index];
 	}
 
 	getBlockType(x, y, z) {
-		return this.pallet.getType(this.data.get(x, y, z));
+		return this.pallet.getType(this.voxels.get(x, y, z));
 	}
 
 	setBlockType(x, y, z, type) {
 		let id = this.pallet.add(type);
-		this.data.set(x, y, z, id);
+		this.voxels.set(x, y, z, id);
 	}
 
 	setBlockTypeAtIndex(index, type) {
 		let id = this.pallet.add(type);
-		this.data.data[index] = id;
+		this.voxels.data[index] = id;
 	}
 
 	repaint() {

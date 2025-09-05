@@ -782,3 +782,76 @@
 // }
 
 // customElements.define('minecraft-view', MinecraftView);
+
+/**
+	 * @param {number} x - x in chunk
+	 * @param {number} y - y in chunk
+	 * @param {number} z - z in chunk
+	 * @param {BlockState} state - BlockState instance
+	 * @param {number} axis - Axis of the quad (0-5)
+	 * @param {number} rotation - Rotation of the quad (0-3)
+	 * ```  
+	 * Red channel                                     Green channel     
+	 * 4---- 4---- 4---- 3--- 3--- 7------- 7------- | 2-- 9--------- 4---- 1-
+	 * 1     2     3     4    5    6        7          8   9          10    11
+	 *```
+	 * 1 - x in chunk (0-15)  
+	 * 2 - y in chunk (0-15)  
+	 * 3 - z in chunk (0-15)  
+	 * 4 - quad axis facing (0-5)  
+	 * 5 - block placing face (0-5)
+	 * 6 - atlas u (0-127)   
+	 * 7 - atlas v (0-127)  
+	 * 8 - block rotation around the placing axis (0-3)  
+	 * 9 - geometry transform id (0-511)  
+	 * 10 - geometry animation id that points to a pair of a destination transform and a time variable for interpolation
+	 * 11 - random uv rotation (false/true)
+	 */
+	// packQuadData(x, y, z, state, geometry_id, axis) {
+	// 	let data_r = 0 >>> 0;
+	// 	data_r += (x & 15) << 28;
+	// 	data_r += (y & 15) << 24;
+	// 	data_r += (z & 15) << 20;
+	// 	data_r += (axis & 7) << 17;
+
+	// 	const placing = state.getProperty(BlockState.PLACING) || 0;
+	// 	const facing = state.getProperty(BlockState.FACING) || 0;
+	// 	const uvs = state.getUvs(axis);
+
+	// 	data_r += (placing & 7) << 14;
+	// 	data_r += uvs;
+
+	// 	let data_g = 0 >>> 0;
+	// 	data_g += (facing & 3) << 30;
+	// 	data_g += (geometry_id & 511) << 21;
+
+	// 	this.util_array[0] = data_r;
+	// 	this.util_array[1] = data_g;
+
+	// 	return this.util_array;
+	// }
+
+	// testAtlas() {
+		// 	const geometry = new THREE.BoxGeometry(1, 1, 1);
+		// 	const material = new THREE.MeshBasicMaterial({
+		// 		map: this.,
+		// 		transparent: true,
+		// 	});
+		// 	const mesh = new THREE.Mesh(geometry, material);
+		// 	mesh.position.set(0, 20, 0);
+		// 	mesh.scale.set(10, 10, 10)
+		// 	this.scene.add(mesh);
+		// }
+	
+		// showDebugInfo() {
+		// 	const axesHelper = new THREE.AxesHelper(16); 
+		// 	this.stats = new Stats();
+	
+		// 	this.stats.showPanel(0); // 0: fps, 1: ms,
+		// 	document.body.appendChild(this.stats.dom);
+	
+		// 	this.scene.add(axesHelper);
+		// 	this.scene.add(axesHelper);
+	
+		// 	this.testAtlas();
+		// }

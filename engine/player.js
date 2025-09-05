@@ -1,7 +1,7 @@
 import * as THREE from "three/webgpu"
 import World from "./world.js";
-import CreativeFly from "./fly_controls.js";
-import Chunk from "./voxel_engine/chunk.js";
+import { CreativeFly } from "./fly_controls.js";
+import Chunk from "./voxel/chunk.js";
 import { ChunkRenderer } from "./gpu_manager.js";
 
 // export default class Player {

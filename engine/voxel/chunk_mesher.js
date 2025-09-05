@@ -2,10 +2,10 @@ import * as THREE from "three";
 import Faces from "./faces";
 import BlockModel from "../block_model/blocks.js";
 import BlockState from "./block_state.js";
-import { Array3D } from "./memory_management.js";
+import { Array3D } from "../utils/memory_management.js";
 import Chunk from "./chunk.js";
 import { ChunkPipeline } from "../gpu_manager";
-import { BitPacker } from "./bit_packer.js";
+import { BitPacker } from "../utils/bit_packer.js";
 import { ao } from "three/examples/jsm/tsl/display/GTAONode.js";
 
 function ctz32(x) {
@@ -52,55 +52,6 @@ export default class ChunkMesher {
 			humidity: 8,
 		}, 4);
 		this.bitView = new this.bit_packer.BitView();
-		console.log(this.bit_packer);
-	}
-
-	/**
-	 * @param {number} x - x in chunk
-	 * @param {number} y - y in chunk
-	 * @param {number} z - z in chunk
-	 * @param {BlockState} state - BlockState instance
-	 * @param {number} axis - Axis of the quad (0-5)
-	 * @param {number} rotation - Rotation of the quad (0-3)
-	 * ```  
-	 * Red channel                                     Green channel     
-	 * 4---- 4---- 4---- 3--- 3--- 7------- 7------- | 2-- 9--------- 4---- 1-
-	 * 1     2     3     4    5    6        7          8   9          10    11
-	 *```
-	 * 1 - x in chunk (0-15)  
-	 * 2 - y in chunk (0-15)  
-	 * 3 - z in chunk (0-15)  
-	 * 4 - quad axis facing (0-5)  
-	 * 5 - block placing face (0-5)
-	 * 6 - atlas u (0-127)   
-	 * 7 - atlas v (0-127)  
-	 * 8 - block rotation around the placing axis (0-3)  
-	 * 9 - geometry transform id (0-511)  
-	 * 10 - geometry animation id that points to a pair of a destination transform and a time variable for interpolation
-	 * 11 - random uv rotation (false/true)
-	 */
-	packQuadData(x, y, z, state, geometry_id, axis) {
-		let data_r = 0 >>> 0;
-		data_r += (x & 15) << 28;
-		data_r += (y & 15) << 24;
-		data_r += (z & 15) << 20;
-		data_r += (axis & 7) << 17;
-
-		const placing = state.getProperty(BlockState.PLACING) || 0;
-		const facing = state.getProperty(BlockState.FACING) || 0;
-		const uvs = state.getUvs(axis);
-
-		data_r += (placing & 7) << 14;
-		data_r += uvs;
-
-		let data_g = 0 >>> 0;
-		data_g += (facing & 3) << 30;
-		data_g += (geometry_id & 511) << 21;
-
-		this.util_array[0] = data_r;
-		this.util_array[1] = data_g;
-
-		return this.util_array;
 	}
 
 	generateAxisBitArrays() {
@@ -166,19 +117,6 @@ export default class ChunkMesher {
 		this.generateAxisBitArrays();
 		this.generateFaceMasks();
 
-		// for (let axis = 0; axis < 6; axis++) {
-		// 	for (const face of this.visibleFaces(axis)) {
-		// 		let x = face.x, y = face.y, z = face.z;
-		// 		let block_type = this.chunk.getBlockType(x, y, z);
-		// 		this.pushCubes(x, y, z, block_type);
-		// 	}
-		// }
-
-		// for (const [x, y, z, type] of this.non_full_blocks) {
-		// 	// const geometry_id = type.getProperty(BlockState.GEOMETRY);
-		// 	const cubes = type.getCubes();
-		// 	this.pushCubes(x, y, z, type);
-		// }
 		for (let axis = 0; axis < 6; axis++) {
 			for (const face of this.visibleFaces(axis)) {
 				let x = face.x, y = face.y, z = face.z;
@@ -190,10 +128,6 @@ export default class ChunkMesher {
 		for (const [x, y, z, type] of this.non_full_blocks) {
 			this.pushCubes(x, y, z, type);
 		}
-
-
-
-		console.log(`Generated ${this.quad_cnt} quads.`);
 	}
 	/**
 	 * @param {BlockState} type  

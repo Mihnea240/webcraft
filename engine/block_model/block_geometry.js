@@ -1,5 +1,4 @@
-import { js } from "three/tsl";
-import Faces from "../voxel_engine/faces";
+import Faces from "../voxel/faces";
 
 const DEG2RAD = Math.PI / 180;
 

@@ -1,6 +1,6 @@
 import BlockModel from "./blocks";
-import BlockState from "../voxel_engine/block_state";
-import Faces from "../voxel_engine/faces";
+import BlockState from "../voxel/block_state";
+import Faces from "../voxel/faces";
 
 /**@param {string} str*/
 function toCammelCase(str) {

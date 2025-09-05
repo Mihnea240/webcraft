@@ -8,8 +8,11 @@ struct GeometryPacked {
 }
 struct Uniform {
     mvp: mat4x4<f32>,
-    chunk_position: vec3<u32>,
     time: u32
+}
+
+struct ChunkData {
+    position: vec3<f32>,
 }
 
 struct VertexOutput {
@@ -24,6 +27,7 @@ struct VertexOutput {
 @group(0) @binding(3) var atlas_sampler: sampler;
 
 @group(1) @binding(0) var<uniform> v_uniform: Uniform;
+@group(1) @binding(1) var<storage, read> chunk_data: array<ChunkData>;
 
 
 const PI_2: f32 = 1.5707963; // PI / 2
@@ -214,6 +218,17 @@ fn getVegetationOffset(position: vec3<i32>) -> vec3<f32> {
     ) * 0.35; // Scale down the offset
 }
 
+// New function: getVegetationOffsetF32 for f32 world positions
+fn getVegetationOffsetF32(position: vec3<f32>) -> vec3<f32> {
+    // Convert to i32 for hashing, but keep f32 math outside
+    let ipos = vec3<i32>(position);
+    return vec3<f32>(
+        hash3D(ipos),
+        0.0,
+        hash3D(ipos + vec3<i32>(3, 17, 91))
+    ) * 0.35;
+}
+
 fn getTextureData(quad: vec3<u32>) -> vec4<u32> {
     return texture_data[((quad.x >> 8u) & 0xFFFu)];
 }
@@ -302,14 +317,17 @@ fn uvProjection(world_pos: vec3<f32>, normal: vec3<f32>) -> vec2<f32> {
 @vertex
 fn vs_main(
     @builtin(vertex_index) vertex_index: u32,
-    @location(0) quad: vec3<u32>
+    @location(0) quad: vec3<u32>,
+    @location(1) chunk_id: u32
 ) -> VertexOutput {
     var output: VertexOutput;
 
     let transform = getTransform(quad);
     let texture_data = getTextureData(quad);
 
-    let chunk_position = getChunkPosition(quad);
+    let position_in_chunk = getChunkPosition(quad);
+    // Use chunk_id as index into chunk_data SSBO
+    let chunk_position = chunk_data[chunk_id].position;
     let normal_index = getQuadNormal(quad);
 
 	//Aplied transform
@@ -333,13 +351,23 @@ fn vs_main(
     var model_vertex = rotation_matrix * (base_position * scale - pivot - inset) + pivot + origin;
     model_vertex = block_placement_rotation * (model_vertex - BLOCK_CENTER) + BLOCK_CENTER;
 	// World position
-    var world_vertex = model_vertex + vec3<f32>(v_uniform.chunk_position) * CHUNK_SIZE + vec3<f32>(chunk_position);
+    var world_vertex = model_vertex + chunk_position * CHUNK_SIZE + vec3<f32>(position_in_chunk);
 
     if (hasRandomOffset(transform)) {
-        world_vertex += getVegetationOffset(
-            vec3<i32>(chunk_position) + vec3<i32>(v_uniform.chunk_position) * i32(CHUNK_SIZE)
-        );
+        // Use f32 math for chunk_position and position_in_chunk
+        let world_block_pos = chunk_position * CHUNK_SIZE + vec3<f32>(position_in_chunk);
+        world_vertex += getVegetationOffsetF32(world_block_pos);
     }
+// New function: getVegetationOffsetF32 for f32 world positions
+fn getVegetationOffsetF32(position: vec3<f32>) -> vec3<f32> {
+    // Convert to i32 for hashing, but keep f32 math outside
+    let ipos = vec3<i32>(position);
+    return vec3<f32>(
+        hash3D(ipos),
+        0.0,
+        hash3D(ipos + vec3<i32>(3, 17, 91))
+    ) * 0.35;
+}
 
 	let uv = select(
 		getTransformUv(transform.face_data_and_flags, normal_index, vertex_index),

@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import Faces from "./voxel_engine/faces.js";
+import Faces from "./voxel/faces.js";
 import ResourceLoader from "./resource-loader.js";
 import BlockModel from "./block_model/blocks.js";
-import Chunk from "./voxel_engine/chunk.js";
-import BlockState from "./voxel_engine/block_state.js";
-import ChunkMesher from "./voxel_engine/chunk_mesher.js";
+import Chunk from "./voxel/chunk.js";
+import BlockState from "./voxel/block_state.js";
+import ChunkMesher from "./voxel/chunk_mesher.js";
 import Player from "./player.js";
 import { ChunkPipeline } from "./gpu_manager.js";
 
@@ -49,31 +49,6 @@ export default class World {
 		}
 	}
 
-	// testAtlas() {
-	// 	const geometry = new THREE.BoxGeometry(1, 1, 1);
-	// 	const material = new THREE.MeshBasicMaterial({
-	// 		map: this.,
-	// 		transparent: true,
-	// 	});
-	// 	const mesh = new THREE.Mesh(geometry, material);
-	// 	mesh.position.set(0, 20, 0);
-	// 	mesh.scale.set(10, 10, 10)
-	// 	this.scene.add(mesh);
-	// }
-
-	// showDebugInfo() {
-	// 	const axesHelper = new THREE.AxesHelper(16); 
-	// 	this.stats = new Stats();
-
-	// 	this.stats.showPanel(0); // 0: fps, 1: ms,
-	// 	document.body.appendChild(this.stats.dom);
-
-	// 	this.scene.add(axesHelper);
-	// 	this.scene.add(axesHelper);
-
-	// 	this.testAtlas();
-	// }
-
 	async render(delta) {
 		for (let i = 0; i < this.dirty_chunks.length; i++) {
 			const chunk = this.dirty_chunks[i];
@@ -96,8 +71,10 @@ export default class World {
 		for (const player of this.players) {
 			player.renderWorld(delta);
 			const renderer = player.renderer;
-			if(!renderer) continue;
+			if (!renderer) continue;
+			
 			renderer.beginPass();
+			renderer.setChunkData(this.chunkMap.values());
 			for (const [identifier, chunk] of this.chunkMap) {
 				renderer.renderChunk(chunk);
 			}
@@ -126,7 +103,7 @@ export default class World {
 		this.dirty_chunks.push(chunk);
 		this.chunkMap.set(identifier, chunk);
 
-		chunk.id = this.chunkMap.size - 1;
+	chunk.id = this.chunkMap.size - 1;
 		chunk.status = Chunk.DIRTY;
 
 		return chunk;
@@ -138,8 +115,10 @@ export default class World {
 	}
 
 	doStuff() {
-		const chunk = this.addChunk(0, 0);
-		if (!chunk) return;
+		const chunk1 = this.addChunk(0, 0);
+		const chunk2 = this.addChunk(1, 0);
+
+		if (!chunk1) return;
 		
 		const stairs = new this.Blocks.WarpedStairs()
 			.setProperty(BlockState.PLACING, Faces.BOTTOM)
@@ -161,7 +140,7 @@ export default class World {
 				
 				
 				if ((x + z) % 2==0) continue;
-				chunk.setBlockType(x, 0, z, r[Math.floor(Math.random() * r.length)]);
+				chunk1.setBlockType(x, 0, z, r[Math.floor(Math.random() * r.length)]);
 			}
 		}
 		// chunk.setBlockType(1, 0, 1, button);
@@ -178,16 +157,16 @@ export default class World {
 				// .setProperty(BlockState.PLACING, i === Faces.FACING_UP ? Faces.DOWN : Faces.UP);
 		}
 
-		chunk.setBlockType(2, 2, 2, planks);
-		chunk.setBlockType(2, 3, 2, buttons[Faces.DOWN]);
-		chunk.setBlockType(2, 1, 2, buttons[Faces.UP]);
-		chunk.setBlockType(2, 2, 3, buttons[Faces.SOUTH]);
-		chunk.setBlockType(2, 2, 1, buttons[Faces.NORTH]);
-		chunk.setBlockType(3, 2, 2, buttons[Faces.WEST]);
-		chunk.setBlockType(1, 2, 2, buttons[Faces.EAST]);
+		chunk1.setBlockType(2, 2, 2, planks);
+		chunk1.setBlockType(2, 3, 2, buttons[Faces.DOWN]);
+		chunk1.setBlockType(2, 1, 2, buttons[Faces.UP]);
+		chunk1.setBlockType(2, 2, 3, buttons[Faces.SOUTH]);
+		chunk1.setBlockType(2, 2, 1, buttons[Faces.NORTH]);
+		chunk1.setBlockType(3, 2, 2, buttons[Faces.WEST]);
+		chunk1.setBlockType(1, 2, 2, buttons[Faces.EAST]);
 
-		chunk.setBlockType(2, 3, 2, torch);
-		chunk.setBlockType(0, 0, 0, sapling);
+		chunk2.setBlockType(2, 3, 2, torch);
+		chunk2.setBlockType(0, 0, 0, sapling);
 
 		// console.log(buttons[Faces.UP].getProperty(BlockState.PLACING))
 

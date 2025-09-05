@@ -1,13 +1,13 @@
-import * as THREE from 'three';
 import JSZip from 'jszip';
 import BlockModel from "./block_model/blocks.js";
 import { ChunkPipeline } from "./gpu_manager.js";
 
 export default class ResourceLoader {
-	constructor() {
+	constructor(resorce_path = "engine/static_data/") {
 		this.chunkPipeline = new ChunkPipeline();
 		this.blockModel = new BlockModel();
 		this.wgsl_chunk_shader_code = "";
+		this.resorce_path = resorce_path;
 	}
 
 	async init() {
@@ -57,35 +57,35 @@ export default class ResourceLoader {
 
 	loadShaders() {
 		return Promise.all([
-			fetch("minecraft/static_data/shaders/chunk.wgsl")
+			fetch(`${this.resorce_path}/shaders/chunk.wgsl`)
 				.then(response => response.text())
 				.then(text => this.wgsl_chunk_shader_code = text),
 		]);
 	}
 
 	async loadBlockMaterials() {
-		const response = await fetch("minecraft/static_data/blocks.json");
+		const response = await fetch(`${this.resorce_path}/blocks.json`);
 		return await response.json();
 	}
 	async loadTerrainTexture() {
-		const response = await fetch("minecraft/static_data/terrain_texture.json");
+		const response = await fetch(`${this.resorce_path}/terrain_texture.json`);
 		return await response.json();
 	}
 	async loadTextureFiles() {
-		const response = await fetch("minecraft/static_data/blocks.zip");
+		const response = await fetch(`${this.resorce_path}/blocks.zip`);
 		const zipData = await response.arrayBuffer();
 		return await JSZip.loadAsync(zipData);
 	}
 	async loadFlipbook() {
-		const response = await fetch("minecraft/static_data/flipbook_textures.json");
+		const response = await fetch(`${this.resorce_path}/flipbook_textures.json`);
 		return await response.json();
 	}
 	async loadGeometry() {
-		const response = await fetch("minecraft/static_data/geometry.json");
+		const response = await fetch(`${this.resorce_path}/geometry.json`);
 		return await response.json();
 	}
 	async loadBlockClasses() {
-		const response = await fetch("minecraft/static_data/block_classes.json");
+		const response = await fetch(`${this.resorce_path}/block_classes.json`);
 		return await response.json();
 	} 
 
@@ -127,5 +127,3 @@ export default class ResourceLoader {
 		return loaded_texture_map;
 	}
 }
-
-

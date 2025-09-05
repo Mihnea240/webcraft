@@ -1,6 +1,4 @@
-import * as THREE from "three";
-import Player from "./minecraft/player.js";
-import MinecraftWorld from "./minecraft-world.js";
+import Player from "../engine/player.js";
 
 export default class MinecraftPlayer extends HTMLElement {
 	static sizeObserver = new ResizeObserver(entries => {
