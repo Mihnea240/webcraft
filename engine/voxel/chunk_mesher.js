@@ -2,11 +2,11 @@ import * as THREE from "three";
 import Faces from "./faces";
 import BlockModel from "../block_model/blocks.js";
 import BlockState from "./block_state.js";
-import { Array3D } from "../utils/memory_management.js";
 import Chunk from "./chunk.js";
+import { Array3D } from "../utils/memory_management.js";
 import { ChunkPipeline } from "../gpu_manager";
 import { BitPacker } from "../utils/bit_packer.js";
-import { ao } from "three/examples/jsm/tsl/display/GTAONode.js";
+import { ChunkSettings } from "../utils/constants.js";
 
 function ctz32(x) {
 	if (x === 0) return 32;
@@ -16,14 +16,16 @@ function ctz32(x) {
 export default class ChunkMesher {
 	/**
 	 * @param {BlockModel} blockModel
+	 * @param {ChunkPipeline} pipeline
 	 */
-	constructor(blockModel) {
+	constructor(blockModel, pipeline) {
 		this.blockModel = blockModel;
+		this.chunkPipeline = pipeline;
 		this.chunk = null;
 
 		this.axis_bit_arrays = new Array3D(Chunk.size, Chunk.size, 3);
 		this.face_masks = new Array3D(Chunk.size, Chunk.size, 6); // 6 faces
-		this.quad_buffer = new Uint32Array(ChunkPipeline.bytes_per_chunk / 4);
+		this.quad_buffer = new Uint32Array(ChunkSettings.BYTES_PER_CHUNK_QUADS / 4);
 		this.non_full_blocks = [];
 		this.util_vec = new THREE.Vector3();
 
@@ -113,6 +115,14 @@ export default class ChunkMesher {
 		}
 	}
 
+	clear() {
+		this.axis_bit_arrays.data.fill(0);
+		this.face_masks.data.fill(0);
+		this.non_full_blocks.length = 0;
+		this.quad_cnt = 0;
+		// this.quad_buffer.fill(0);
+	}
+
 	simpleMesher() {
 		this.generateAxisBitArrays();
 		this.generateFaceMasks();
@@ -135,8 +145,7 @@ export default class ChunkMesher {
 	pushCubes(x, y, z, type, axis = -1) {
 		const buffer = this.quad_buffer;
 		let offset = this.quad_cnt * 3;
-		buffer.set([0, 0, 0], offset);
-
+		
 		const blockModel = this.blockModel;
 		const bitView = this.bitView;
 		const material_view = blockModel.getMaterialById(type.material_id);
@@ -148,6 +157,7 @@ export default class ChunkMesher {
 
 		for (const cube of blockModel.cubes(type.geometry_id)) {
 			const mask = cube.mask, id = cube.id;
+			for(let i = 0; i < 3; i++) buffer[offset + i] = 0;
 
 			if (axis >= 0 && (mask & (1 << axis)) === 0) {
 				const atlas_id = material_view.getTile(axis);
@@ -168,11 +178,14 @@ export default class ChunkMesher {
 				const atlas_id = material_view.getTile(i);
 				atlas_view.id = atlas_id;
 				const texture_id = atlas_view.get();
+
+				for(let i = 0; i < 3; i++) buffer[offset + i] = 0;
+
+
 				bitView.set_all(buffer, offset,
 					x, y, z, texture_id, i, placing, facing, id, ao_exponent, 0,
 					0, 0, 0, 0, 0, 0, 0
 				);
-				// bitView.set_all(buffer, offset, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 				offset += 3;
 				this.quad_cnt++;
 
@@ -185,7 +198,6 @@ export default class ChunkMesher {
 				// 	blockModel.textureRegistry.atlas_tile_data.buffer
 				// );
 
-				console.log(blockModel.geometryRegistry.transformView(id).inset);
 			}
 
 		}
@@ -195,9 +207,15 @@ export default class ChunkMesher {
 
 	computeChunk(chunk) {
 		this.chunk = chunk;
-		this.quad_cnt = 0;
+		this.clear();
 
 		this.simpleMesher();
 		this.chunk.draw_details.quad_cnt = this.quad_cnt;
+
+		this.chunkPipeline.setQuadBuffer(
+			chunk.draw_details.quad_offset,
+			this.quad_buffer,
+			this.quad_cnt
+		);
 	}
 }

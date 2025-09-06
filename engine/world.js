@@ -7,6 +7,7 @@ import BlockState from "./voxel/block_state.js";
 import ChunkMesher from "./voxel/chunk_mesher.js";
 import Player from "./player.js";
 import { ChunkPipeline } from "./gpu_manager.js";
+import { ChunkSettings } from "./utils/constants.js";
 
 
 export default class World {
@@ -26,8 +27,8 @@ export default class World {
 		this.clock = new THREE.Clock();
 
 		this.blockModel = this.resourceLoader.blockModel;
-		this.chunkMesher = new ChunkMesher(this.blockModel);
- 
+		this.chunkMesher = new ChunkMesher(this.blockModel, this.chunkPipeline);
+
 		/**@type {Record<string, new () => BlockState>} */
 		this.Blocks = this.blockModel.Blocks;
 
@@ -60,11 +61,6 @@ export default class World {
 			}
 
 			this.chunkMesher.computeChunk(chunk);
-			this.chunkPipeline.setQuadBuffer(
-				chunk.draw_details.quad_offset,
-				this.chunkMesher.quad_buffer,
-				chunk.draw_details.quad_cnt
-			);
 			chunk.status = Chunk.RENDERED;
 		}
 
@@ -72,7 +68,7 @@ export default class World {
 			player.renderWorld(delta);
 			const renderer = player.renderer;
 			if (!renderer) continue;
-			
+
 			renderer.beginPass();
 			renderer.setChunkData(this.chunkMap.values());
 			for (const [identifier, chunk] of this.chunkMap) {
@@ -103,7 +99,9 @@ export default class World {
 		this.dirty_chunks.push(chunk);
 		this.chunkMap.set(identifier, chunk);
 
-	chunk.id = this.chunkMap.size - 1;
+		chunk.id = this.chunkMap.size - 1;
+		// Set quad_offset based on chunk ID to avoid overlapping in the quad buffer
+		chunk.draw_details.quad_offset = chunk.id * ChunkSettings.BYTES_PER_CHUNK_QUADS;
 		chunk.status = Chunk.DIRTY;
 
 		return chunk;
@@ -117,13 +115,15 @@ export default class World {
 	doStuff() {
 		const chunk1 = this.addChunk(0, 0);
 		const chunk2 = this.addChunk(1, 0);
+		const chunk3 = this.addChunk(0, 1);
+		const chunk4 = this.addChunk(1, 1);
 
 		if (!chunk1) return;
-		
+
 		const stairs = new this.Blocks.WarpedStairs()
 			.setProperty(BlockState.PLACING, Faces.BOTTOM)
 			.setProperty(BlockState.FACING, Faces.FACING_SOUTH);
-		const planks = new this.Blocks.WarpedPlanks();
+		const planks = new this.Blocks.WarpedPlanks().setProperty(BlockState.FULL_BLOCK, 1);
 		const torch = new this.Blocks.RedstoneTorch()
 			.setProperty(BlockState.FACING, Faces.FACING_SOUTH)
 			.setProperty(BlockState.PLACING, Faces.WEST)
@@ -132,41 +132,38 @@ export default class World {
 			.setProperty(BlockState.FACING, Faces.FACING_EAST)
 			.setProperty(BlockState.PLACING, Faces.DOWN);
 		const sapling = new this.Blocks.DarkOakSapling();
-		
+
 		// const r = [planks, stairs, torch, button, sapling];
 		const r = [sapling]
 		for (let x = 0; x < Chunk.size; x++) {
 			for (let z = 0; z < Chunk.size; z++) {
-				
-				
-				if ((x + z) % 2==0) continue;
-				chunk1.setBlockType(x, 0, z, r[Math.floor(Math.random() * r.length)]);
+
+
+				// if ((x + z) % 2 == 0) continue;
+				chunk1.setBlockType(x, 0, z, planks);
 			}
 		}
-		// chunk.setBlockType(1, 0, 1, button);
-		// chunk.setBlockType(1, 0, 1, torch);
-		// chunk.setBlockType(1, 0, 0, planks);
-		// chunk.setBlockType(0, 0, 1, planks);
-		// chunk.setBlockType(2, 0, 1, planks);
-		// chunk.setBlockType(1, 0, 2, planks);
-
 		const buttons = new Array(6);
-		for(let i = 0; i < 6; i++) {
+		for (let i = 0; i < 6; i++) {
 			buttons[i] = new this.Blocks.WarpedButton()
 				.setProperty(BlockState.PLACING, i)
-				// .setProperty(BlockState.PLACING, i === Faces.FACING_UP ? Faces.DOWN : Faces.UP);
+			// .setProperty(BlockState.PLACING, i === Faces.FACING_UP ? Faces.DOWN : Faces.UP);
 		}
 
-		chunk1.setBlockType(2, 2, 2, planks);
-		chunk1.setBlockType(2, 3, 2, buttons[Faces.DOWN]);
-		chunk1.setBlockType(2, 1, 2, buttons[Faces.UP]);
-		chunk1.setBlockType(2, 2, 3, buttons[Faces.SOUTH]);
-		chunk1.setBlockType(2, 2, 1, buttons[Faces.NORTH]);
-		chunk1.setBlockType(3, 2, 2, buttons[Faces.WEST]);
-		chunk1.setBlockType(1, 2, 2, buttons[Faces.EAST]);
+		chunk1.setBlockType(0, 0, 0, planks);
+		// chunk2.setBlockType(2, 3, 2, buttons[Faces.DOWN]);
+		// chunk2.setBlockType(2, 1, 2, buttons[Faces.UP]);
+		// chunk2.setBlockType(2, 2, 3, buttons[Faces.SOUTH]);
+		// chunk2.setBlockType(2, 2, 1, buttons[Faces.NORTH]);
+		// chunk2.setBlockType(3, 2, 2, buttons[Faces.WEST]);
+		// chunk2.setBlockType(1, 2, 2, buttons[Faces.EAST]);
 
-		chunk2.setBlockType(2, 3, 2, torch);
-		chunk2.setBlockType(0, 0, 0, sapling);
+		chunk2.setBlockType(0, 0, 0, torch);
+
+		// console.log(chunk2.getData(2, 2, 2));
+		chunk3.setBlockType(0, 0, 0, sapling);
+
+		chunk4.setBlockType(0, 0, 0, stairs);
 
 		// console.log(buttons[Faces.UP].getProperty(BlockState.PLACING))
 

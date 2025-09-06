@@ -358,16 +358,6 @@ fn vs_main(
         let world_block_pos = chunk_position * CHUNK_SIZE + vec3<f32>(position_in_chunk);
         world_vertex += getVegetationOffsetF32(world_block_pos);
     }
-// New function: getVegetationOffsetF32 for f32 world positions
-fn getVegetationOffsetF32(position: vec3<f32>) -> vec3<f32> {
-    // Convert to i32 for hashing, but keep f32 math outside
-    let ipos = vec3<i32>(position);
-    return vec3<f32>(
-        hash3D(ipos),
-        0.0,
-        hash3D(ipos + vec3<i32>(3, 17, 91))
-    ) * 0.35;
-}
 
 	let uv = select(
 		getTransformUv(transform.face_data_and_flags, normal_index, vertex_index),

@@ -2,10 +2,13 @@ export const ChunkSettings = {
 	WORLD_CNT: 100,
 	ELEMENTS_PER_QUAD: 3,
 	BYTES_PER_QUAD_ELEMENT: 4,
-	MAX_QUADS_PER_BLOCK: 54,
+	MAX_QUADS_PER_BLOCK: 12,
 	SIZE: 16,
 	get BYTES_PER_CHUNK_QUADS() { 
 		return this.ELEMENTS_PER_QUAD * this.BYTES_PER_QUAD_ELEMENT * this.MAX_QUADS_PER_BLOCK * (this.SIZE ** 3);
+	},
+	get BYTES_PER_QUAD_INSTANCE() {
+		return this.ELEMENTS_PER_QUAD * this.BYTES_PER_QUAD_ELEMENT;
 	},
 	CHUNK_ID_ELEMENTS: 1,
 	CHUNK_ID_BYTES_PER_ELEMENT: 4,
@@ -14,7 +17,7 @@ export const ChunkSettings = {
 	},
 	ELEMENTS_PER_UNIFORM: 20,
 	BYTES_PER_UNIFORM_ELEMENT: 4,
-	get BYTES_PER_UNIFORM() {
+	get BYTES_PER_UNIFORM_BUFFER() {
 		return this.ELEMENTS_PER_UNIFORM * this.BYTES_PER_UNIFORM_ELEMENT;
 	},
 	ELEMENTS_PER_CHUNK_DATA: 4,
@@ -23,8 +26,9 @@ export const ChunkSettings = {
 		return this.ELEMENTS_PER_CHUNK_DATA * this.BYTES_PER_CHUNK_DATA_ELEMENT;
 	},
 	get BYTES_PER_CHUNK_DATA_BUFFER() {
-		return Settings.ACTIVE_CHUNKS * this.BYTES_PER_CHUNK_DATA;
-	}
+		return this.WORLD_CNT * this.BYTES_PER_CHUNK_DATA;
+	},
+	BYTES_PER_CHUNK_ID: 4,
 };
 
 export const TransformSettings = {
@@ -45,13 +49,13 @@ export const TransformSettings = {
 export const BlockSettings = {
 	MODEL_SIZE: 16,
 	TEXTURE_SIZE: 16,
-	DEFAULT_SCALE: [this.MODEL_SIZE, this.MODEL_SIZE, this.MODEL_SIZE],
+	DEFAULT_SCALE: [16, 16, 16],
 	DEFAULT_POSITION: [0, 0, 0],
 	DEFAULT_ROTATION: [0, 0, 0],
 	DEFAULT_PIVOT: [0, 0, 0],
 	DEFAULT_INSET: 0,
 	DEFAULT_INSET_ANGLE: 0,
-	DEFAULT_UV: [0, 0, this.TEXTURE_SIZE, this.TEXTURE_SIZE],
+	DEFAULT_UV: [0, 0, 16, 16],
 }
 
 export const TextureSettings = {

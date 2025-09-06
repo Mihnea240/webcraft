@@ -1,30 +1,23 @@
 import * as THREE from "three";
 import Chunk from "./voxel/chunk.js";
-import { buffer } from "three/tsl";
-import Settings from "./utils/constants.js";
+import { ChunkSettings } from "./utils/constants.js";
 
 
 export class ChunkPipeline {
-       static dynamic_layout = [
-	       { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: "uniform" } }, // Camera transform
-	       { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } }, // Chunk data SSBO
-       ];
-       static static_layout = [
-	       { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } }, // Geometry data
-	       { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } }, // Texture data
-	       { binding: 2, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, texture: { viewDimension: "2d" } }, // Terrain texture
-	       { binding: 3, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, sampler: { type: "filtering" } } // Terrain sampler
-       ]
-	static bytes_per_chunk = 16 ** 3 * 12 * 54;
-	static bytes_per_chunk_uniform = 4 * 4; // 3 ints 
-	static bytes_per_quad_instance = 3 * 4; // 2 uint32s
-	static bytes_per_chunk_id = 4;
+	static dynamic_layout = [
+		{ binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: "uniform" } }, // Camera transform
+		{ binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } }, // Chunk data SSBO
+	];
+	static static_layout = [
+		{ binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } }, // Geometry data
+		{ binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } }, // Texture data
+		{ binding: 2, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, texture: { viewDimension: "2d" } }, // Terrain texture
+		{ binding: 3, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, sampler: { type: "filtering" } } // Terrain sampler
+	]
 
 	constructor() {
 		this.render_format = navigator.gpu.getPreferredCanvasFormat();
 		this.sample_count = 4; // 4x MSAA - can be 1, 4, or 8
-
-		this.chunk_cnt = 20;
 	}
 
 	async getGpuContext() {
@@ -51,12 +44,15 @@ export class ChunkPipeline {
 		this.terrain_sampler = this.device.createSampler({
 			magFilter: "nearest",
 			minFilter: "nearest",
+			mipmapFilter: "nearest",
 		});
 		this.terrain_texture = this.device.createTexture({
 			dimension: "2d",
 			format: this.render_format,
 			size: [bitmap.width, bitmap.height],
 			usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+			mipLevelCount: 4,
+			label: "Terrain texture"
 		})
 		this.device.queue.copyExternalImageToTexture(
 			{ source: bitmap },
@@ -67,36 +63,42 @@ export class ChunkPipeline {
 
 	createBuffers(geometry_data, texture_data) {
 		this.quad_buffer = this.device.createBuffer({
-			size: Settings.ACTIVE_CHUNKS * ChunkPipeline.bytes_per_chunk,
+			size: ChunkSettings.WORLD_CNT * ChunkSettings.BYTES_PER_CHUNK_QUADS,
 			usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+			label: "Quad instance buffer"
 		});
 
 		this.geometry_ssbo = this.device.createBuffer({
 			size: geometry_data.byteLength,
 			usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.VERTEX,
+			label: "Geometry SSBO"
 		});
 		this.device.queue.writeBuffer(this.geometry_ssbo, 0, geometry_data);
 
 		this.chunk_id_buffer = this.device.createBuffer({
-			size: ChunkPipeline.bytes_per_chunk_id * 4, // 4 uints for 4 vertices
+			size: ChunkSettings.BYTES_PER_CHUNK_ID * ChunkSettings.WORLD_CNT * 4,
 			usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+			label: "Chunk ID buffer"
 		});
 
 		this.uniform_buffer = this.device.createBuffer({
-			size: 24 * 4, // 16 floats for a 4x4 matrix + 4 uints for chunk position + 1 uint for time
+			size: ChunkSettings.BYTES_PER_UNIFORM_BUFFER,
 			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+			label: "Uniform buffer"
 		});
 
 		this.chunk_data_buffer = this.device.createBuffer({
-			size: Settings.ACTIVE_CHUNKS * Settings,
+			size: ChunkSettings.BYTES_PER_CHUNK_DATA_BUFFER,
 			usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+			label: "Chunk data buffer"
 		});
 
 		this.texture_ssbo = this.device.createBuffer({
 			size: texture_data.byteLength,
 			usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.VERTEX,
+			label: "Texture SSBO"
 		});
-		
+
 		this.device.queue.writeBuffer(this.texture_ssbo, 0, texture_data);
 	}
 
@@ -113,13 +115,13 @@ export class ChunkPipeline {
 				{ binding: 3, resource: this.terrain_sampler }
 			]
 		});
-	       this.dynamic_data_bind_group = this.device.createBindGroup({
-		       layout: this.dynamic_data_layout,
-		       entries: [
-			       { binding: 0, resource: { buffer: this.uniform_buffer } },
-			       { binding: 1, resource: { buffer: this.chunk_data_buffer } },
-		       ]
-	       });
+		this.dynamic_data_bind_group = this.device.createBindGroup({
+			layout: this.dynamic_data_layout,
+			entries: [
+				{ binding: 0, resource: { buffer: this.uniform_buffer } },
+				{ binding: 1, resource: { buffer: this.chunk_data_buffer } },
+			]
+		});
 	}
 
 	createPipeline() {
@@ -136,23 +138,22 @@ export class ChunkPipeline {
 			vertex: {
 				module: this.module,
 				entryPoint: "vs_main",
-		       buffers: [
-			       {
-				       arrayStride: ChunkPipeline.bytes_per_quad_instance,
-				       stepMode: "instance",
-				       attributes: [
-					       { shaderLocation: 0, offset: 0, format: "uint32x3" }, // quad data
-				       ]
-			       },
-			       {
-				       arrayStride: ChunkPipeline.bytes_per_chunk_id,
-				       stepMode: "vertex",
-				       attributes: [
-					       { shaderLocation: 1, offset: 0, format: "uint32" }, // chunk id per vertex
-				       ]
-			       },
+				buffers: [
+					{
+						arrayStride: ChunkSettings.BYTES_PER_QUAD_INSTANCE,
+						stepMode: "instance",
+						attributes: [
+							{ shaderLocation: 0, offset: 0, format: "uint32x3" }, // quad data
+						]
+					},
+					{
+						arrayStride: ChunkSettings.BYTES_PER_CHUNK_ID,
+						stepMode: "vertex",
+						attributes: [
+							{ shaderLocation: 1, offset: 0, format: "uint32" }, // chunk id per vertex
+						]
+					},
 				],
-			   constants
 			},
 			fragment: {
 				module: this.module,
@@ -184,8 +185,8 @@ export class ChunkPipeline {
 			this.quad_buffer,
 			offset,
 			buffer,
-			0,
-			cnt * ChunkPipeline.bytes_per_quad_instance
+			0,  // dataOffset - start from beginning of source buffer
+			cnt * ChunkSettings.ELEMENTS_PER_QUAD  // size in elements (uint32s)
 		);
 	}
 }
@@ -212,11 +213,10 @@ export class ChunkRenderer {
 		this.util_uint32_array = new Uint32Array(4);
 		this.util_matrix = new THREE.Matrix4();
 		this.util_matrix_array = new Float32Array(16);
-		this.uniform_buffer = new Float32Array(16 + 4 + 4);
+		this.uniform_buffer = new Float32Array(ChunkSettings.ELEMENTS_PER_UNIFORM);
 		this.uniform_buffer_uint_view = new Uint32Array(this.uniform_buffer.buffer);
-
-
-		this.chunk_data_buffer = new Float32Array(Settings.ACTIVE_CHUNKS * 4); // 3 floats + 1 padding per chunk
+		this.chunk_data_buffer = new Float32Array(ChunkSettings.BYTES_PER_CHUNK_DATA_BUFFER / 4);
+		this.chunk_id_buffer = new Uint32Array(ChunkSettings.WORLD_CNT * 4);
 		this.updateCanvasContext();
 		this.active_pass = false;
 	}
@@ -231,8 +231,8 @@ export class ChunkRenderer {
 		});
 
 		// Clean up existing textures
-		if(this.depth_texture) this.depth_texture.destroy();
-		if(this.multisample_texture) this.multisample_texture.destroy();
+		if (this.depth_texture) this.depth_texture.destroy();
+		if (this.multisample_texture) this.multisample_texture.destroy();
 
 		// Create depth buffer
 		this.depth_texture = this.device.createTexture({
@@ -252,7 +252,7 @@ export class ChunkRenderer {
 	}
 
 	createRenderPass() {
-		this.encoder = this.device.createCommandEncoder({label: "Chunk render pass encoder"});
+		this.encoder = this.device.createCommandEncoder({ label: "Chunk render pass encoder" });
 		this.render_pass = this.encoder.beginRenderPass({
 			colorAttachments: [{
 				view: this.multisample_texture.createView(), // Render to MSAA texture
@@ -292,7 +292,7 @@ export class ChunkRenderer {
 		this.setMVPMatrix(this.util_matrix_array);
 		this.setTime(time);
 		this.updateUniforms();
-	
+
 		this.render_pass.setPipeline(this.chunk_pipeline.pipeline);
 		this.render_pass.setBindGroup(0, this.chunk_pipeline.static_data_bind_group);
 		this.render_pass.setBindGroup(1, this.chunk_pipeline.dynamic_data_bind_group);
@@ -306,17 +306,21 @@ export class ChunkRenderer {
 		this.uniform_buffer.set(matrix, 0);
 	}
 
-
-	// New: update chunk data SSBO for all chunks
 	setChunkData(chunks) {
 		for (const chunk of chunks) {
-			const base = chunk.id * 4;
+			const base = chunk.id * ChunkSettings.ELEMENTS_PER_CHUNK_DATA;
 			this.chunk_data_buffer[base + 0] = chunk.position[0];
 			this.chunk_data_buffer[base + 1] = chunk.position[1];
 			this.chunk_data_buffer[base + 2] = chunk.position[2];
 			this.chunk_data_buffer[base + 3] = 0.0; // Padding
+
+			const id_base = chunk.id * 4;
+			for (let i = 0; i < 4; i++) {
+				this.chunk_id_buffer[id_base + i] = chunk.id;
+			}
 		}
 		this.device.queue.writeBuffer(this.chunk_pipeline.chunk_data_buffer, 0, this.chunk_data_buffer);
+		this.device.queue.writeBuffer(this.chunk_pipeline.chunk_id_buffer, 0, this.chunk_id_buffer);
 	}
 
 	updateUniforms() {
@@ -328,11 +332,10 @@ export class ChunkRenderer {
 		// if(!this.active_pass) {
 		// 	throw new Error("No active render pass. Call beginPass() before rendering.");
 		// }
-
 		const { quad_offset, quad_cnt } = chunk.draw_details;
-		
+
 		this.render_pass.setVertexBuffer(0, this.chunk_pipeline.quad_buffer, quad_offset);
-		this.render_pass.setVertexBuffer(1, this.chunk_pipeline.chunk_id_buffer, chunk.id * ChunkPipeline.bytes_per_chunk_id * 4);
+		this.render_pass.setVertexBuffer(1, this.chunk_pipeline.chunk_id_buffer, chunk.id * ChunkSettings.BYTES_PER_CHUNK_ID * 4);
 		this.render_pass.draw(4, quad_cnt, 0, 0);
 	}
 
