@@ -1,11 +1,9 @@
 import BlockState from "./block_state";
 import Chunk from "./chunk";
 import World from "../world";
-import { ChunkSettings } from "../utils/constants";
+import { ChunkSettings } from "../../utils/constants";
 
 export default class BlockRefrence{
-	/**@param {BlockState} block_state*/
-	
 	constructor() {
 		this.chunk_position = 0;
 		

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import Chunk from "./voxel/chunk.js";
-import { ChunkSettings } from "./utils/constants.js";
+import { ChunkSettings } from "../utils/constants.js";
 
 
 export class ChunkPipeline {
@@ -103,8 +103,8 @@ export class ChunkPipeline {
 	}
 
 	createBindGroups() {
-		this.static_data_layout = this.device.createBindGroupLayout({ entries: ChunkPipeline.static_layout });
-		this.dynamic_data_layout = this.device.createBindGroupLayout({ entries: ChunkPipeline.dynamic_layout });
+		this.static_data_layout = this.device.createBindGroupLayout({ entries: /** @type {GPUBindGroupLayoutEntry[]} */ (ChunkPipeline.static_layout) });
+		this.dynamic_data_layout = this.device.createBindGroupLayout({ entries: /** @type {GPUBindGroupLayoutEntry[]} */ (ChunkPipeline.dynamic_layout) });
 
 		this.static_data_bind_group = this.device.createBindGroup({
 			layout: this.static_data_layout,
@@ -230,11 +230,11 @@ export class ChunkRenderer {
 			usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC
 		});
 
-		// Clean up existing textures
-		if (this.depth_texture) this.depth_texture.destroy();
-		if (this.multisample_texture) this.multisample_texture.destroy();
+		// Store old textures for cleanup
+		const old_depth_texture = this.depth_texture;
+		const old_multisample_texture = this.multisample_texture;
 
-		// Create depth buffer
+		// Create new depth buffer
 		this.depth_texture = this.device.createTexture({
 			size: [this.canvas.width, this.canvas.height],
 			format: "depth24plus-stencil8",
@@ -242,13 +242,17 @@ export class ChunkRenderer {
 			sampleCount: this.chunk_pipeline.sample_count, // MSAA depth buffer
 		});
 
-		// Create multisample texture for MSAA
+		// Create new multisample texture for MSAA
 		this.multisample_texture = this.device.createTexture({
 			size: [this.canvas.width, this.canvas.height],
 			format: this.chunk_pipeline.render_format,
 			usage: GPUTextureUsage.RENDER_ATTACHMENT,
 			sampleCount: this.chunk_pipeline.sample_count, // MSAA color buffer
 		});
+
+		// Clean up old textures after new ones are created
+		if (old_depth_texture) old_depth_texture.destroy();
+		if (old_multisample_texture) old_multisample_texture.destroy();
 	}
 
 	createRenderPass() {
@@ -277,12 +281,15 @@ export class ChunkRenderer {
 		// 	throw new Error("Render pass already active. Call endPass() before beginning a new pass.");
 		// }
 		// this.active_pass = true;
-		this.createRenderPass();
+		
+		// Check for canvas resize BEFORE creating render pass
 		if (this.canvas.width !== this.canvas_size.width || this.canvas.height !== this.canvas_size.height) {
 			this.canvas_size.width = this.canvas.width;
 			this.canvas_size.height = this.canvas.height;
 			this.updateCanvasContext();
 		}
+		
+		this.createRenderPass();
 
 		this.util_matrix.multiplyMatrices(
 			this.camera.projectionMatrix,

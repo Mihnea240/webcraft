@@ -1,14 +1,4 @@
 export default class InputManager {
-	static sizeObserver = new ResizeObserver(entries => {
-		for (const entry of entries) {
-			entry.target.html_bounds = entry.contentRect;
-			// Trigger resize handlers
-			if (entry.target.inputManager) {
-				entry.target.inputManager.handleResize(entry.contentRect);
-			}
-		}
-	});
-
 	constructor(html_element, options = {}) {
 		this._html_element = null;
 		this.html_bounds = null;
@@ -27,6 +17,17 @@ export default class InputManager {
 		this.key_released = this.handleKeyUp.bind(this);
 		this.mouse_moved = this.handleMouseMove.bind(this);
 
+		// Create instance-specific ResizeObserver
+		this.resizeObserver = new ResizeObserver(entries => {
+			for (const entry of entries) {
+				// Only handle resize for our specific element
+				if (entry.target === this._html_element) {
+					this.html_bounds = entry.contentRect;
+					this.handleResize(entry.contentRect);
+				}
+			}
+		});
+
 		this.html_element = html_element;
 
 		this.emptyHandlers = [];
@@ -38,16 +39,14 @@ export default class InputManager {
 			this._html_element.removeEventListener('keydown', this.key_pressed);
 			this._html_element.removeEventListener('keyup', this.key_released);
 			this._html_element.removeEventListener("pointermove", this.mouse_moved);
-			this._html_element.inputManager = null;
-			InputManager.sizeObserver.unobserve(this._html_element);
+			this.resizeObserver.unobserve(this._html_element);
 		}
 		this._html_element = element;
 		if (this._html_element) {
 			this._html_element.addEventListener('keydown', this.key_pressed);
 			this._html_element.addEventListener('keyup', this.key_released);
 			this._html_element.addEventListener("pointermove", this.mouse_moved);
-			this._html_element.inputManager = this; // Reference for resize observer
-			InputManager.sizeObserver.observe(this._html_element);
+			this.resizeObserver.observe(this._html_element);
 		}
 	}
 
@@ -65,12 +64,6 @@ export default class InputManager {
 		keys.push(ev.key.toLowerCase());
 		keys.push(keys.join('+'));
 		return keys;
-	}
-
-	getShortcutsContainingKey(key) {
-		return this.shortcuts.entries().filter(([k, v]) => {
-			return v.composed && v.shortcut.indexOf(key) !== -1;
-		});
 	}
 
 	handleKeyDown(ev) {
@@ -238,5 +231,20 @@ export default class InputManager {
 			cooldown,
 			throttle
 		});
+	}
+
+	// Cleanup method for proper disposal
+	dispose() {
+		if (this._html_element) {
+			this._html_element.removeEventListener('keydown', this.key_pressed);
+			this._html_element.removeEventListener('keyup', this.key_released);
+			this._html_element.removeEventListener("pointermove", this.mouse_moved);
+			this.resizeObserver.unobserve(this._html_element);
+		}
+		this.resizeObserver.disconnect();
+		this.eventHandlers.clear();
+		this.activeShortcuts.clear();
+		this.frozenShortcuts.clear();
+		this._html_element = null;
 	}
 }

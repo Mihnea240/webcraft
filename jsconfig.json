@@ -6,13 +6,25 @@
     "allowSyntheticDefaultImports": true,
     "strict": false,
     "skipLibCheck": true,
-    "types": ["@webgpu/types"]
+    "checkJs": true,
+    "allowJs": true,
+    "noEmit": true,
+    "typeRoots": ["./types", "./node_modules/@types"],
+    "paths": {
+      "@types/*": ["./types/*"],
+      "@engine/*": ["./engine/*"],
+      "@utils/*": ["./utils/*"],
+      "@voxel/*": ["./engine/voxel/*"],
+      "@block-model/*": ["./engine/block_model/*"]
+    }
   },
   "include": [
     "**/*.js",
-    "**/*.mjs"
+    "**/*.mjs",
+    "types/**/*.d.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "archive"
   ]
 }

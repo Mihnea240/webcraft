@@ -1,11 +1,15 @@
-import * as THREE from "three/webgpu"
+import * as THREE from "three"
 import World from "./world.js";
 import { CreativeFly } from "./fly_controls.js";
 import Chunk from "./voxel/chunk.js";
 import { ChunkRenderer } from "./gpu_manager.js";
-import InputManager from "./utils/input_manager.js";
+import InputManager from "../utils/input_manager.js";
 
 export default class Player {
+	/**
+	 * @param {string} name
+	 * @param {import('../types/core.js').PlayerOptions} options
+	 */
 	constructor(name, options = {}) {
 		this.name = name;
 		this.options = { tickMode: 'continuous', ...options };
@@ -17,11 +21,17 @@ export default class Player {
 		this.inputManager = null;
 	}
 
+	/**
+	 * @param {HTMLCanvasElement} canvas
+	 */
 	createRenderer(canvas) {
 		this.renderer = new ChunkRenderer(canvas, this.camera, this.world.chunkPipeline);
-		this.web_component = canvas.getRootNode().host;
+		/** @type {any} */
+		const rootNode = canvas.getRootNode();
+		this.web_component = rootNode.host;
 	}
 
+	/**@param {HTMLCanvasElement} canvas*/
 	setControls(canvas) {
 		this.controls = new CreativeFly(this.camera, canvas);
 		this.camera.lookAt(new THREE.Vector3(1, 1, 1));
@@ -54,13 +64,18 @@ export default class Player {
 		}
 	}
 
+	/**
+	 * @param {HTMLCanvasElement} canvas
+	 */
 	setupInputHandling(canvas) {
 		// Make sure the canvas can receive focus for keyboard events
 		canvas.setAttribute('tabindex', '0');
 		canvas.focus();
 		
-		const webHandler = canvas.getRootNode().host;
-		this.inputManager = new InputManager(canvas, { tickMode: this.options.tickMode });
+		/** @type {any} */
+		const rootNode = canvas.getRootNode();
+		const webHandler = rootNode.host;
+		this.inputManager = new InputManager(webHandler, { tickMode: this.options.tickMode });
 		
 		// Set up pointer lock request
 		canvas.addEventListener("click", () => {
@@ -71,7 +86,9 @@ export default class Player {
 		// Set up mouse move handling with new addEventListener syntax
 		this.inputManager.addEventListener('mousemove', this.controls.handleMouseMove.bind(this.controls));
 
-		this.inputManager.addEventListener('resize', webHandler.setCanvasSize.bind(webHandler), { throttle: 100 });
+		this.inputManager.addEventListener('resize', () => {
+			webHandler.setCanvasSize();
+		}, { throttle: 16 });
 
 		// Set up movement shortcuts
 		this.addMovementShortcuts();
@@ -90,5 +107,10 @@ export default class Player {
 			.addEventListener('d', this.controls.moveRight.bind(this.controls), { continuous: true })
 			.addEventListener(' ', this.controls.moveUp.bind(this.controls), { continuous: true })
 			.addEventListener('shift', this.controls.moveDown.bind(this.controls), { continuous: true });
+	}
+
+	rayToWorld() {
+		// TODO: Implement raycast to world
+		// this.world.raycast(this.camera.position, this.camera.getWorldDirection());
 	}
 }

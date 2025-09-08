@@ -7,9 +7,9 @@ import BlockState from "./voxel/block_state.js";
 import ChunkMesher from "./voxel/chunk_mesher.js";
 import Player from "./player.js";
 import { ChunkPipeline } from "./gpu_manager.js";
-import { ChunkSettings } from "./utils/constants.js";
+import { ChunkSettings } from "../utils/constants.js";
 import BlockRefrence from "./voxel/block_refrence.js";
-import { Raycaster } from "./utils/voxel_dda.js";
+import { Raycaster } from "../utils/voxel_dda.js";
 
 
 export default class World {

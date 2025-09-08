@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import { Array3D } from "../utils/memory_management.js";
+import { Array3D } from "../../utils/memory_management.js";
 import BlockPallet from "./block_pallet.js";
 import BlockState from "./block_state.js";
 import Faces from "./faces.js";
 import BlockModel from "../block_model/blocks.js";
-import { ChunkSettings } from "../utils/constants.js";
+import { ChunkSettings } from "../../utils/constants.js";
 
 
 export default class Chunk {
