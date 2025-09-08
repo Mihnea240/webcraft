@@ -3,70 +3,34 @@ import World from "./world.js";
 import { CreativeFly } from "./fly_controls.js";
 import Chunk from "./voxel/chunk.js";
 import { ChunkRenderer } from "./gpu_manager.js";
-
-// export default class Player {
-// 	constructor(name) {
-// 		this.name = name;
-
-// 		this.camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-// 		/**@type {World | null} */
-// 		this.world = null;
-// 	}
-
-// 	createRenderer(canvas) {
-// 		// this.renderer = new THREE.WebGLRenderer({
-// 		// 	canvas: canvas,
-// 		// 	antialias: true,
-// 		// });
-// 		// this.renderer.setSize(canvas.width, canvas.height);
-// 		// this.renderer.setPixelRatio(window.devicePixelRatio);
-// 		// this.renderer.setClearColor(0); // Sky blue color
-// 		this.renderer = new THREE.WebGPURenderer({
-// 			canvas: canvas,
-// 			antialias: true,
-// 		})
-// 		this.renderer.setSize(canvas.width, canvas.height);
-// 		this.renderer.setPixelRatio(window.devicePixelRatio);
-// 		this.renderer.setClearColor(0); // Sky blue color
-// 	}
-
-// 	setControls(canvas) {
-// 		this.controls = new CreativeFly(this.camera, canvas);
-// 	}
-
-// 	setWorld(world) {
-// 		if (world === this.world) return;
-// 		if (this.world) this.world.removePlayer(this);
-
-// 		this.world.addPlayer(this);
-// 		this.camera.position.set(0, 0, 0); // Set initial position
-// 		this.camera.lookAt(new THREE.Vector3(0, 1, -1));
-// 	}
-
-// 	async renderWorld(delta) {
-// 		this.controls.update();
-// 		await this.renderer.renderAsync(this.world.scene, this.camera);
-// 	}
-// }
+import InputManager from "./utils/input_manager.js";
 
 export default class Player {
-	constructor(name) {
+	constructor(name, options = {}) {
 		this.name = name;
+		this.options = { tickMode: 'continuous', ...options };
 
 		this.camera = new THREE.PerspectiveCamera(75, 1, 0.001, 1000);
 		this.camera.lookAt(new THREE.Vector3(5, 0, 1));
 		this.camera.matrixAutoUpdate = true;
 		this.world = null;
+		this.inputManager = null;
 	}
 
 	createRenderer(canvas) {
 		this.renderer = new ChunkRenderer(canvas, this.camera, this.world.chunkPipeline);
+		this.web_component = canvas.getRootNode().host;
 	}
 
 	setControls(canvas) {
 		this.controls = new CreativeFly(this.camera, canvas);
 		this.camera.lookAt(new THREE.Vector3(1, 1, 1));
 		this.camera.updateProjectionMatrix();
+		
+		// Set up input handling
+		this.setupInputHandling(canvas);
+		
+		return this.controls;
 	}
 	/**@param {World} world*/
 	setWorld(world) {
@@ -80,6 +44,51 @@ export default class Player {
 	}
 
 	async renderWorld(delta) {
-		this.controls.update();
+		// Update input manager first
+		if (this.inputManager) {
+			this.inputManager.tick(delta);
+		}
+		
+		if (this.controls) {
+			this.controls.update(delta);
+		}
+	}
+
+	setupInputHandling(canvas) {
+		// Make sure the canvas can receive focus for keyboard events
+		canvas.setAttribute('tabindex', '0');
+		canvas.focus();
+		
+		const webHandler = canvas.getRootNode().host;
+		this.inputManager = new InputManager(canvas, { tickMode: this.options.tickMode });
+		
+		// Set up pointer lock request
+		canvas.addEventListener("click", () => {
+			canvas.requestPointerLock();
+			canvas.focus();
+		});
+
+		// Set up mouse move handling with new addEventListener syntax
+		this.inputManager.addEventListener('mousemove', this.controls.handleMouseMove.bind(this.controls));
+
+		this.inputManager.addEventListener('resize', webHandler.setCanvasSize.bind(webHandler), { throttle: 100 });
+
+		// Set up movement shortcuts
+		this.addMovementShortcuts();
+	}
+
+	addMovementShortcuts() {
+		if (!this.inputManager || !this.controls) {
+			console.warn('Cannot add shortcuts: missing inputManager or controls');
+			return;
+		}
+
+		this.inputManager
+			.addEventListener('w', this.controls.moveForward.bind(this.controls), { continuous: true })
+			.addEventListener('s', this.controls.moveBackward.bind(this.controls), { continuous: true })
+			.addEventListener('a', this.controls.moveLeft.bind(this.controls), { continuous: true })
+			.addEventListener('d', this.controls.moveRight.bind(this.controls), { continuous: true })
+			.addEventListener(' ', this.controls.moveUp.bind(this.controls), { continuous: true })
+			.addEventListener('shift', this.controls.moveDown.bind(this.controls), { continuous: true });
 	}
 }

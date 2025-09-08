@@ -1,4 +1,10 @@
 {
+	"block_base": {
+		"components": {
+			"geometry": "full_block",
+			"full_block": true
+		}
+	},
 	"torch_base": {
 		"permutations": [
 			{
@@ -45,6 +51,7 @@
 		]
 	},
 	"warped_planks":{
+		"inherit": "block_base",
 		"components":{
 			"material": "warped_planks"
 		}

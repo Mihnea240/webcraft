@@ -1,17 +1,6 @@
 import Player from "../engine/player.js";
 
 export default class MinecraftPlayer extends HTMLElement {
-	static sizeObserver = new ResizeObserver(entries => {
-		let timeoutId;
-		if (timeoutId) clearTimeout(timeoutId);
-		timeoutId = setTimeout(() => {
-			timeoutId = null;
-			for (const entry of entries) {
-				entry.target.setCanvasSize();
-			}
-		}, 8);
-	});
-
 	static css = (function () {
 		const style = new CSSStyleSheet();
 		style.replaceSync(/*css*/`
@@ -45,6 +34,7 @@ export default class MinecraftPlayer extends HTMLElement {
 	setCanvasSize() {
 		const bounds = this.getBoundingClientRect();
 		const dpr = window.devicePixelRatio || 1;
+		console.log(bounds);
 		
 		// Set canvas buffer size (actual resolution) based on device pixel ratio
 		this.canvas.width = bounds.width * dpr;
@@ -67,13 +57,6 @@ export default class MinecraftPlayer extends HTMLElement {
 	connectedCallback() {
 		this.tabIndex = 0;
 		this.canvas.tabIndex = 0;
-		MinecraftPlayer.sizeObserver.observe(this);
-
-		// if (this.parentElement instanceof MinecraftWorld) {
-		// 	this.player.setWorld(this.parentElement.world);
-		// 	this.player.createRenderer(this.canvas);
-		// 	this.player.setControls(this.canvas);
-		// }
 	}
 }
 

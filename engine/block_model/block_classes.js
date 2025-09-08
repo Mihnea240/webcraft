@@ -1,6 +1,7 @@
 import BlockModel from "./blocks";
 import BlockState from "../voxel/block_state";
 import Faces from "../voxel/faces";
+import { mod } from "three/tsl";
 
 /**@param {string} str*/
 function toCammelCase(str) {
@@ -8,10 +9,17 @@ function toCammelCase(str) {
 }
 
 export default class BlockObjectParser {
-
-	static mofifiers_map = {
-		geometry: "createGeometryModifier",
-		material: "createMaterialModifier",
+	getModifier(modifier_name, modifier_data) {
+		switch (modifier_name) {
+			case "geometry": return this.createGeometryModifier(modifier_data);
+			case "material": return this.createMaterialModifier(modifier_data);
+			default: {
+				const property = BlockState[modifier_name.toUpperCase()];
+				if(property !== undefined) {
+					return this.createPropertyModifier(modifier_name, modifier_data);
+				}
+			}
+		}
 	}
 
 	/**
@@ -42,20 +50,24 @@ export default class BlockObjectParser {
 			this.Blocks[toCammelCase(json_data.inherit)] || this.Blocks.BlockState :
 			this.Blocks.BlockState;
 
+		let defaults = [], default_func = null;
 		for (const component in json_data.components) {
-			const modifier_function = this.getModifierFunction(component, json_data.components[component]);
-			modifier_function.call(default_ids);
+			const func = this.getModifier(component, json_data.components[component]);
+			if(!func) continue;
+			defaults.push(func);
 		}
-		const geometry_id = default_ids.geometry_id;
-		const material_id = default_ids.material_id;
+		if (defaults.length > 0) {
+			default_func = function () {
+				for (const func of defaults) func.call(this);
+			}
+		}
 
 		const new_class = class extends inherited_class {
 			static events = inherited_class.events.map((events) => [...events]);
-			constructor(data) {
-				super(name, data);
+			constructor() {
+				super(name);
 
-				this.geometry_id ||= geometry_id;
-				this.material_id ||= material_id;
+				default_func?.call(this);
 
 				for (const events of this.constructor.events) {
 					for (const event of events) event.call(this);
@@ -76,21 +88,13 @@ export default class BlockObjectParser {
 		return [class_name, new_class];
 	}
 
-	getModifierFunction(modifier_name, modifier_data) {
-		const modifier_generator = BlockObjectParser.mofifiers_map[modifier_name];
-		if (!modifier_generator) {
-			throw new Error(`Unknown component ${modifier_name} in condition block`);
-		}
-		return this[modifier_generator](modifier_data);
-	}
-
 	parseConditionalBlock(context_class, condition_json) {
 		const [validator, listeners] = this.createConditionFunction(condition_json.condition);
 		/** @type {Array<Function>} */
 		const action_functions = [];
 
 		for (const [component, value] of Object.entries(condition_json.components)) {
-			action_functions.push(this.getModifierFunction(component, value));
+			action_functions.push(this.getModifier(component, value));
 		}
 
 		return [function () {
@@ -120,8 +124,20 @@ export default class BlockObjectParser {
 		}
 	}
 
-	resolveValueKeyword(ctx_class, string) {
+	createPropertyModifier(property_name, property_value) {
+		const property = BlockState[property_name.toUpperCase()];
+		if(!property_name || property === undefined) {
+			throw new Error(`Unknown property ${property_name} in property modifier`);
+		}
+		property_value = this.resolveValueKeyword(property_value);
+
+		return new Function(`this.setProperty(${property}, ${property_value});`);
+	}
+
+	resolveValueKeyword(string) {
 		switch (string) {
+			case true: return 1;
+			case false: return 0;
 			case "true": return 1;
 			case "false": return 0;
 			default: {
@@ -130,7 +146,6 @@ export default class BlockObjectParser {
 				return faceValue !== -1 ? faceValue : undefined;
 			}
 		}
-		throw new Error(`Unknown value keyword: ${string}`);
 	}
 
 	/**@param {string} condition_text*/

@@ -57,9 +57,9 @@ export default class BlockState {
 		}
 	}
 
-	constructor(block_name, state_data = 4 << 3) {
+	constructor(block_name) {
 		this.name = block_name;
-		this.data = state_data | 0; // Convert to 32 bits integer
+		this.data = 4 << 3; // Convert to 32 bits integer
 		this.geometry_id = 0; // Default geometry ID
 		this.material_id = 0; // Default material
 	}

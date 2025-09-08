@@ -21,6 +21,7 @@ export default class ChunkMesher {
 	constructor(blockModel, pipeline) {
 		this.blockModel = blockModel;
 		this.chunkPipeline = pipeline;
+		/**@type {Chunk} */
 		this.chunk = null;
 
 		this.axis_bit_arrays = new Array3D(Chunk.size, Chunk.size, 3);
@@ -168,6 +169,7 @@ export default class ChunkMesher {
 					x, y, z, texture_id, axis, placing, facing, id, ao_exponent, 0,
 					0, 0, 0, 0, 0, 0, 0
 				);
+				this.chunk.voxel_to_first_quad.set(x, y, z, offset);
 				offset += 3;
 				this.quad_cnt++;
 
@@ -186,6 +188,7 @@ export default class ChunkMesher {
 					x, y, z, texture_id, i, placing, facing, id, ao_exponent, 0,
 					0, 0, 0, 0, 0, 0, 0
 				);
+				this.chunk.voxel_to_first_quad.set(x, y, z, offset);
 				offset += 3;
 				this.quad_cnt++;
 

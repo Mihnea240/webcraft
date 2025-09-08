@@ -4,6 +4,7 @@ import BlockPallet from "./block_pallet.js";
 import BlockState from "./block_state.js";
 import Faces from "./faces.js";
 import BlockModel from "../block_model/blocks.js";
+import { ChunkSettings } from "../utils/constants.js";
 
 
 export default class Chunk {
@@ -17,7 +18,7 @@ export default class Chunk {
 		this.voxel_to_first_quad = new Array3D(Chunk.size);
 		this.pallet = new BlockPallet();
 		
-		this.gpu_data = new Float32Array(3);
+		this.gpu_data = new Float32Array(ChunkSettings.BYTES_PER_CHUNK_DATA / 4);
 		this.position = new Float32Array(this.gpu_data.buffer, 0, 3);
 		this.position[0] = x;
 		this.position[1] = y;
@@ -33,6 +34,10 @@ export default class Chunk {
 		this.id = 0;
 
 		this.world = null;
+	}
+
+	pushRepaint(x, y, z) {
+		const index = (x << 8) | (z << 4) | y;
 	}
 
 	needsRepaint() {
@@ -66,11 +71,10 @@ export default class Chunk {
 	}
 
 	repaint() {
-		for(const coord_id of this.block_repaints) {
-			const block = this.getBlockTypeAtIndex(coord_id);
-			const texture_id = this.block_to_texture_id.data[coord_id];
-
-
+		for (const coord_id of this.block_repaints) {
+			const x = (coord_id >> 8) & 0xf;
+			const z = (coord_id >> 4) & 0xf;
+			const y = (coord_id >> 0) & 0xf;
 		}
 	}
 

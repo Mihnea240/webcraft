@@ -51,7 +51,7 @@ export class ChunkPipeline {
 			format: this.render_format,
 			size: [bitmap.width, bitmap.height],
 			usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
-			mipLevelCount: 4,
+			mipLevelCount: 1,
 			label: "Terrain texture"
 		})
 		this.device.queue.copyExternalImageToTexture(
