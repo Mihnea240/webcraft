@@ -83,9 +83,6 @@ export default class Player {
 			canvas.focus();
 		});
 
-		// Set up mouse move handling with new addEventListener syntax
-		this.inputManager.addEventListener('mousemove', this.controls.handleMouseMove.bind(this.controls));
-
 		this.inputManager.addEventListener('resize', () => {
 			webHandler.setCanvasSize();
 		}, { throttle: 16 });
@@ -101,12 +98,19 @@ export default class Player {
 		}
 
 		this.inputManager
-			.addEventListener('w', this.controls.moveForward.bind(this.controls), { continuous: true })
-			.addEventListener('s', this.controls.moveBackward.bind(this.controls), { continuous: true })
-			.addEventListener('a', this.controls.moveLeft.bind(this.controls), { continuous: true })
-			.addEventListener('d', this.controls.moveRight.bind(this.controls), { continuous: true })
-			.addEventListener(' ', this.controls.moveUp.bind(this.controls), { continuous: true })
-			.addEventListener('shift', this.controls.moveDown.bind(this.controls), { continuous: true });
+			.addEventListener('w:hold', this.controls.moveForward.bind(this.controls))
+			.addEventListener('s:hold', this.controls.moveBackward.bind(this.controls))
+			.addEventListener('a:hold', this.controls.moveLeft.bind(this.controls))
+			.addEventListener('d:hold', this.controls.moveRight.bind(this.controls))
+			.addEventListener('space:hold', this.controls.moveUp.bind(this.controls))
+			.addEventListener('shift:hold', this.controls.moveDown.bind(this.controls))
+			.addEventListener('w,w:press', this.controls.startSprint.bind(this.controls))
+			.addEventListener('w,w:release', this.controls.endSprint.bind(this.controls))
+			.addEventListener('mousemove:hold', (ev) => {
+				
+				this.controls.handleMouseMove(ev.movementX, ev.movementY);
+			})
+			.addEventListener('resize:hold', this.web_component.setCanvasSize.bind(this.web_component));
 	}
 
 	rayToWorld() {

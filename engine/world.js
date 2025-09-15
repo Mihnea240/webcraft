@@ -227,7 +227,7 @@ export default class World {
 			if (!ref) return;
 			const current = ref.getProperty(BlockState.FACING);
 			const next = (current + 1) % 4;
-			console.log("Changing PLACING from", current, "to", next);
+			// console.log("Changing PLACING from", current, "to", next);
 			ref.setProperty(BlockState.FACING, next);
 		}, 3000);
 

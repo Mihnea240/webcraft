@@ -196,8 +196,12 @@ export declare class InputManager {
   eventHandlers: Map<string, EventHandlerData[]>;
   activeShortcuts: Set<string>;
   frozenShortcuts: Set<string>;
-  timer: number | null;
-  sequence_timeout: number;
+  
+  // Key sequence tracking
+  currentSequence: string[];
+  sequenceTimer: number | null;
+  sequenceTimeout: number;
+  
   tickMode: 'continuous' | 'immediate';
   resizeObserver: ResizeObserver;
   
@@ -206,10 +210,26 @@ export declare class InputManager {
   mouse_moved: (ev: MouseEvent) => void;
   html_element: HTMLElement;
   emptyHandlers: any[];
+  
+  // Reusable mouse data object
+  mouseData: {
+    relative: { x: number; y: number };
+    absolute: { x: number; y: number };
+    movement: { x: number; y: number };
+    bounds: { width: number; height: number; left: number; top: number };
+    event: MouseEvent | null;
+  };
 
   constructor(html_element: HTMLElement, options?: InputManagerOptions);
-  normalizeKey(ev: KeyboardEvent): string;
-  getShortcutsContainingKey(key: string): string[];
+  normalizeKey(ev: KeyboardEvent): string[];
+  
+  // Sequence handling methods
+  getSequenceHandlers(): Generator<{ eventType: string; handler: EventHandlerData }>;
+  isPartOfSequence(key: string): boolean;
+  checkSequenceMatch(): boolean;
+  resetSequence(): void;
+  startSequenceTimeout(): void;
+  
   handleKeyDown(ev: KeyboardEvent): void;
   handleKeyUp(ev: KeyboardEvent): void;
   tick(delta: number): void;

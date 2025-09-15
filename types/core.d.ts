@@ -31,6 +31,7 @@ export interface PlayerOptions {
 
 export interface InputManagerOptions {
   tickMode?: 'continuous' | 'immediate';
+  sequenceTimeout?: number;
 }
 
 export interface TerrainSettings {

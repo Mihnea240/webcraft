@@ -5,8 +5,9 @@ export class CreativeFly {
 	constructor(camera, domElement) {
 		this.camera = camera;
 		this.domElement = domElement;
-		this.speed = 5.0; // Units per second
+		this.speed = 10.0; // Units per second
 		this.sensitivity = 0.002;
+		this.sprint_factor = 5.0
 		this.pixelRatio = window.devicePixelRatio || 1;
 
 		this.camera_direction = new THREE.Vector3();
@@ -54,11 +55,11 @@ export class CreativeFly {
 		this.camera_forward.set(this.camera_direction.x, 0, this.camera_direction.z).normalize();
 	}
 
-	handleMouseMove(mouseData) {
+	handleMouseMove(movementX, movementY) {
 		this.camera_euler.setFromQuaternion(this.camera.quaternion, 'YXZ');
 
-		this.camera_euler.y -= (mouseData.movement.x * this.sensitivity) / this.pixelRatio;
-		this.camera_euler.x -= (mouseData.movement.y * this.sensitivity) / this.pixelRatio;
+		this.camera_euler.y -= (movementX * this.sensitivity) / this.pixelRatio;
+		this.camera_euler.x -= (movementY * this.sensitivity) / this.pixelRatio;
 
 		// Clamp pitch to prevent camera flipping
 		this.camera_euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.camera_euler.x));
@@ -67,6 +68,15 @@ export class CreativeFly {
 		this.camera_euler.z = 0;
 
 		this.camera.quaternion.setFromEuler(this.camera_euler);
+	}
+
+	startSprint() {
+		this.speed *= this.sprint_factor;
+		console.log(this.speed)
+	}
+	endSprint() {
+		this.speed /= this.sprint_factor;
+		console.log(this.speed)
 	}
 
 	moveForward() {
