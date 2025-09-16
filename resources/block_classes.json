@@ -1,0 +1,83 @@
+{
+	"block_base": {
+		"components": {
+			"geometry": "full_block",
+			"full_block": true
+		}
+	},
+	"torch_base": {
+		"permutations": [
+			{
+				"condition": "placing==down",
+				"components": {
+					"geometry": "torch_floor"
+				}
+			},
+			{
+				"condition": "placing==side",
+				"components": {
+					"geometry": "torch_wall"
+				}
+			}
+		]
+	},
+	"torch":{
+		"inherit": "torch_base",
+		"components": {
+			"material": "torch"
+		}
+	},
+	"soul_torch":{
+		"inherit": "torch_base",
+		"components": {
+			"material": "soul_torch"
+		}
+	},
+	"redstone_torch": {
+		"inherit": "torch_base",
+		"permutations": [
+			{
+				"condition": "active==true",
+				"components": {
+					"material": "redstone_torch"
+				}
+			},
+			{
+				"condition": "active==false",
+				"components": {
+					"material": "unlit_redstone_torch"
+				}
+			}
+		]
+	},
+	"warped_planks":{
+		"inherit": "block_base",
+		"components":{
+			"material": "warped_planks"
+		}
+	},
+	"warped_slab": {
+		"components":{
+			"material": "warped_slab",
+			"geometry": "slab"
+		}
+	},
+	"warped_stairs": {
+		"components":{
+			"material": "warped_stairs",
+			"geometry": "stairs"
+		}
+	},
+	"warped_button": {
+		"components":{
+			"material": "warped_button",
+			"geometry": "button"
+		}
+	},
+	"dark_oak_sapling":{
+		"components":{
+			"material": "dark_oak_sapling",
+			"geometry": "cross_random_offset"
+		}
+	}
+}

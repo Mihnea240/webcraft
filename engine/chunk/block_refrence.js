@@ -1,8 +1,8 @@
 import BlockState from "@chunk/block_state";
 import Chunk from "@chunk/chunk";
 import World from "@world/world";
-import { ChunkSettings } from "@utils/constants";
-import Faces from "@utils/faces";
+import { ChunkSettings } from "@engine/utils/constants";
+import Faces from "@engine/utils/faces";
 
 export default class BlockRefrence{
 	constructor(world, causes_remesh = true) {

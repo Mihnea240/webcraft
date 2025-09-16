@@ -13,7 +13,7 @@
     "paths": {
       "@types/*": ["./types/*"],
       "@engine/*": ["./engine/*"],
-      "@utils/*": ["./utils/*"],
+      "@utils/*": ["./engine/utils/*"],
       "@resources/*": ["./resources/*"],
       "@web-components/*": ["./web_components/*"],
       "@examples/*": ["./examples/*"],
@@ -21,26 +21,9 @@
       
       // Engine subsystems
       "@voxel/*": ["./engine/chunk/*"],
-      "@block_model/*": ["./engine/block_model/*"],
+      "@block/*": ["./engine/block/*"],
       "@player/*": ["./engine/player/*"],
-      "@world/*": ["./engine/world/*"],
-      
-      // Core engine files
-      "@engine/world": ["./engine/world/world.js"],
-      "@engine/player": ["./engine/player/player.js"],
-      "@engine/gpu-manager": ["./engine/world/gpu_manager.js"],
-      
-      // Chunk/Voxel system
-      "@engine/chunk": ["./engine/chunk/chunk.js"],
-      "@engine/block-reference": ["./engine/chunk/block_refrence.js"],
-      "@engine/block-state": ["./engine/chunk/block_state.js"],
-      "@engine/chunk-mesher": ["./engine/chunk/chunk_mesher.js"],
-      
-      // Utilities
-      "@utils/constants": ["./utils/constants.js"],
-      "@utils/input-manager": ["./utils/input_manager.js"],
-      "@utils/voxel-dda": ["./utils/voxel_dda.js"],
-      "@utils/faces": ["./utils/faces.js"]
+      "@world/*": ["./engine/world/*"]
     }
   },
   "include": [

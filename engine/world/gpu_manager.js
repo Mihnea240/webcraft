@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import Chunk from "@chunk/chunk";
-import { ChunkSettings } from "@utils/constants";
+import { ChunkSettings } from "@engine/utils/constants";
 
 
 export class ChunkPipeline {

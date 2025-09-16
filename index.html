@@ -7,9 +7,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>WebCraft</title>
 
-	<script type="module" src="./web_components/minecraft-context.js"></script>
-	<script type="module" src="./web_components/minecraft-world.js"></script>
-	<script type="module" src="./web_components//minecraft-player.js"></script>
+	<script type="module" src="./web_components/webcraft-context.js"></script>
 
 	<style>
 		body, html {
@@ -21,7 +19,7 @@
 			overflow-y: hidden;
 		}
 
-		minecraft-context, minecraft-world, minecraft-player {
+		webcraft-context, webcraft-world, webcraft-player {
 			overflow: hidden;
 			display: block;	
 			width: 100%;
@@ -31,11 +29,13 @@
 </head>
 
 <body>
-	<minecraft-context>
-		<minecraft-world>
-			<minecraft-player></minecraft-player>
-		</minecraft-world>
-	</minecraft-context>
+	<webcraft-context>
+		<webcraft-world>
+			<webcraft-player>
+				<img src="./resources/ui/crosshair.png" slot="crosshair" />
+			</webcraft-player>
+		</webcraft-world>
+	</webcraft-context>
 </body>
 
 </html>

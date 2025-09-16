@@ -1,0 +1,7 @@
+
+
+export class ItemModel {
+	constructor() {
+		
+	}
+}

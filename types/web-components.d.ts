@@ -1,7 +1,7 @@
 // Web Components types
 import type { Player, World, ResourceLoader, InputManager } from './engine';
 
-export interface MinecraftContextElement extends HTMLElement {
+export interface WebcraftContextElement extends HTMLElement {
   // Resource management
   resourceLoader?: ResourceLoader;
   
@@ -10,7 +10,7 @@ export interface MinecraftContextElement extends HTMLElement {
   getResourceLoader(): ResourceLoader;
 }
 
-export interface MinecraftPlayerElement extends HTMLElement {
+export interface WebcraftPlayerElement extends HTMLElement {
   // Properties
   player: Player;
   readonly canvas: HTMLCanvasElement;
@@ -21,7 +21,7 @@ export interface MinecraftPlayerElement extends HTMLElement {
   disconnectedCallback(): void;
 }
 
-export interface MinecraftWorldElement extends HTMLElement {
+export interface WebcraftWorldElement extends HTMLElement {
   // Properties
   world?: World;
   player?: Player;
@@ -56,27 +56,27 @@ export interface ResourcesLoadedEvent extends CustomEvent {
 }
 
 // Custom element constructor interfaces
-export interface MinecraftContextElementConstructor {
-  new (): MinecraftContextElement;
-  prototype: MinecraftContextElement;
+export interface WebcraftContextElementConstructor {
+  new (): WebcraftContextElement;
+  prototype: WebcraftContextElement;
 }
 
-export interface MinecraftPlayerElementConstructor {
-  new (): MinecraftPlayerElement;
-  prototype: MinecraftPlayerElement;
+export interface WebcraftPlayerElementConstructor {
+  new (): WebcraftPlayerElement;
+  prototype: WebcraftPlayerElement;
 }
 
-export interface MinecraftWorldElementConstructor {
-  new (): MinecraftWorldElement;
-  prototype: MinecraftWorldElement;
+export interface WebcraftWorldElementConstructor {
+  new (): WebcraftWorldElement;
+  prototype: WebcraftWorldElement;
 }
 
 // Custom element declarations
 declare global {
   interface HTMLElementTagNameMap {
-    'minecraft-context': MinecraftContextElement;
-    'minecraft-player': MinecraftPlayerElement;
-    'minecraft-world': MinecraftWorldElement;
+    'webcraft-context': WebcraftContextElement;
+    'webcraft-player': WebcraftPlayerElement;
+    'webcraft-world': WebcraftWorldElement;
   }
   
   interface WindowEventMap {
@@ -87,9 +87,9 @@ declare global {
   
   // Custom element registry
   interface CustomElementRegistry {
-    define(name: 'minecraft-context', constructor: MinecraftContextElementConstructor, options?: ElementDefinitionOptions): void;
-    define(name: 'minecraft-player', constructor: MinecraftPlayerElementConstructor, options?: ElementDefinitionOptions): void;
-    define(name: 'minecraft-world', constructor: MinecraftWorldElementConstructor, options?: ElementDefinitionOptions): void;
+    define(name: 'webcraft-context', constructor: WebcraftContextElementConstructor, options?: ElementDefinitionOptions): void;
+    define(name: 'webcraft-player', constructor: WebcraftPlayerElementConstructor, options?: ElementDefinitionOptions): void;
+    define(name: 'webcraft-world', constructor: WebcraftWorldElementConstructor, options?: ElementDefinitionOptions): void;
   }
 }
 

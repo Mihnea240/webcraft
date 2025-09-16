@@ -1,15 +1,15 @@
 import * as THREE from "three";
-import Faces from "@utils/faces";
+import Faces from "@engine/utils/faces.js";
 import ResourceLoader from "./resource-loader.js";
-import BlockModel from "@block_model/blocks";
+import BlockModel from "@engine/block/model.js";
 import Chunk from "@chunk/chunk";
 import BlockState from "@chunk/block_state";
 import ChunkMesher from "@voxel/chunk_mesher";
 import Player from "@player/player";
 import { ChunkPipeline } from "./gpu_manager.js";
-import { ChunkSettings } from "@utils/constants";
+import { ChunkSettings } from "@engine/utils/constants.js";
 import BlockRefrence from "@chunk/block_refrence";
-import { Raycaster } from "@utils/voxel_dda";
+import { Raycaster } from "@engine/utils/voxel_dda.js";
 
 
 export default class World {

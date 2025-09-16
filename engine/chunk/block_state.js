@@ -1,5 +1,5 @@
-import BlockModel from "@block_model/blocks";
-import Faces from "@utils/faces";
+import BlockModel from "@engine/block/model";
+import Faces from "@engine/utils/faces";
 
 export default class BlockState {
 	/**@type {BlockModel} */

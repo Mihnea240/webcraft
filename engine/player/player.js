@@ -3,7 +3,7 @@ import World from "@world/world";
 import { CreativeFly } from "./fly_controls.js";
 import Chunk from "@chunk/chunk";
 import { ChunkRenderer } from "@world/gpu_manager.js";
-import InputManager from "@utils/input_manager";
+import InputManager from "@engine/utils/input_manager.js";
 
 export default class Player {
 	/**

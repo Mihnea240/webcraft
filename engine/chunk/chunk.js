@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import { Array3D } from "@utils/memory_management";
+import { Array3D } from "@engine/utils/memory_management";
 import BlockPallet from "@voxel/block_pallet";
 import BlockState from "@chunk/block_state";
-import Faces from "@utils/faces";
-import BlockModel from "@block_model/blocks";
-import { ChunkSettings } from "@utils/constants";
+import Faces from "@engine/utils/faces";
+import BlockModel from "@engine/block/model";
+import { ChunkSettings } from "@engine/utils/constants";
 
 
 export default class Chunk {
