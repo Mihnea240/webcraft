@@ -3,8 +3,7 @@ import BlockState from "./block_state";
 export default class BlockPallet {
 	constructor() {
 		/**
-		 * @type {Map<string, Map<int, int>} 
-		 * @description Maps block names to a map of block states integers that to ids in an array.
+		 * @type {Map<string, Map<number, number>>} 
 		*/
 		this.block_name_map = new Map();
 
@@ -37,7 +36,7 @@ export default class BlockPallet {
 	}
 
 	/**
-	 * @param {int} id
+	 * @param {number} id
 	 * @returns {BlockState}
 	 */
 	getType(id) {

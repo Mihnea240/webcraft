@@ -1,4 +1,4 @@
-import Faces from "../voxel/faces";
+import Faces from "@utils/faces";
 
 const DEG2RAD = Math.PI / 180;
 
@@ -111,7 +111,7 @@ export class TransformView{
 	}
 
 	set origin(array) {
-		if(!arrayCheck(array)) return this;
+		if(!arrayCheck(array)) return;
 		const base = this.transform_offset;
 		this.transform_buffer[base + 0] = array[0];
 		this.transform_buffer[base + 1] = array[1];
@@ -133,7 +133,7 @@ export class TransformView{
 
 	// Scale methods (offset 4-6)
 	set scale(array) {
-		if(!arrayCheck(array)) return this;
+		if(!arrayCheck(array)) return;
 		const base = this.transform_offset + 4;
 		this.transform_buffer[base + 0] = array[0];
 		this.transform_buffer[base + 1] = array[1];
@@ -144,7 +144,7 @@ export class TransformView{
 	}
 	
 	offsetScale(array) {
-		if(!arrayCheck(array)) return this;
+		if(!arrayCheck(array)) return;
 		const base = this.transform_offset + 4;
 		this.transform_buffer[base + 0] += array[0];
 		this.transform_buffer[base + 1] += array[1];
@@ -154,7 +154,7 @@ export class TransformView{
 
 	// Rotation methods (offset 8-10)
 	set rotation(array) { 
-		if(!arrayCheck(array)) return this;
+		if(!arrayCheck(array)) return;
 		const base = this.transform_offset + 8;
 		this.transform_buffer[base + 0] = array[0] * DEG2RAD;
 		this.transform_buffer[base + 1] = array[1] * DEG2RAD;
@@ -174,7 +174,7 @@ export class TransformView{
 
 	// Pivot methods (offset 12-14)
 	set pivot(array) {
-		if (!arrayCheck(array)) return this;
+		if (!arrayCheck(array)) return;
 		const base = this.transform_offset;
 		this.transform_buffer[base + 3] = array[0];
 		this.transform_buffer[base + 7] = array[1];

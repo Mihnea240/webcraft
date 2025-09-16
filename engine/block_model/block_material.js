@@ -1,4 +1,4 @@
-import Faces from "../voxel/faces";
+import Faces from "@utils/faces";
 
 export class AtlasBuilder {
 	constructor() {

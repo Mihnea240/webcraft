@@ -56,7 +56,7 @@ class KeyEntry{
 		this.releaseTime = releaseTime;
 		this.time_out = time_out;
 
-		this.sequence_timeout = 250;
+		this.sequence_timeout = 100;
 		
 		// Event objects - store actual events
 		this.pressEvent = null;

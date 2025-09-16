@@ -1,4 +1,4 @@
-import World from "../engine/world.js";
+import World from "@world/world";
  
 export default class MinecraftWorld extends HTMLElement {
 	static css = (function () {
@@ -23,25 +23,17 @@ export default class MinecraftWorld extends HTMLElement {
 		this.shadowRoot.adoptedStyleSheets = [MinecraftWorld.css];
 		this.world = null;
 
-		this.addEventListener("resource-loaded", () => {
-			this.world = new World(this.resourceLoader);
+		this.addEventListener("resource-loaded", (ev) => {
+			const customEvent = /** @type {CustomEvent} */ (ev);
+			this.world = new World(customEvent.detail);
 			
 			for (const player of this.players) {
 				this.world.addPlayer(player.player);
 				player.player.createRenderer(player.canvas);
 				player.player.setControls(player.canvas);
 			}
-			// this.world.showDebugInfo();
 			this.world.animate();
 		});
-	}
-
-	get blockModel() {
-		return this.parentElement.blockModel;
-	}
-
-	get resourceLoader() {
-		return this.parentElement.resourceLoader;
 	}
 
 	get players() {

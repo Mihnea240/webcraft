@@ -1,4 +1,4 @@
-import Player from "../engine/player.js";
+import Player from "@player/player";
 
 export default class MinecraftPlayer extends HTMLElement {
 	static css = (function () {

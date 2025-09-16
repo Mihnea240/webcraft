@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import Chunk from "./voxel/chunk.js";
-import { ChunkSettings } from "../utils/constants.js";
+import Chunk from "@chunk/chunk";
+import { ChunkSettings } from "@utils/constants";
 
 
 export class ChunkPipeline {

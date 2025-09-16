@@ -1,12 +1,12 @@
 import * as THREE from "three";
-import Faces from "./faces";
-import BlockModel from "../block_model/blocks.js";
-import BlockState from "./block_state.js";
-import Chunk from "./chunk.js";
-import { Array3D } from "../../utils/memory_management.js";
-import { ChunkPipeline } from "../gpu_manager";
-import { BitPacker } from "../../utils/bit_packer.js";
-import { ChunkSettings } from "../../utils/constants.js";
+import Faces from "@utils/faces";
+import BlockModel from "@block_model/blocks";
+import BlockState from "@chunk/block_state";
+import Chunk from "@chunk/chunk";
+import { Array3D } from "@utils/memory_management";
+import { ChunkPipeline } from "@world/gpu_manager";
+import { BitPacker } from "@utils/bit_packer";
+import { ChunkSettings } from "@utils/constants";
 
 function ctz32(x) {
 	if (x === 0) return 32;

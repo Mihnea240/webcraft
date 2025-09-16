@@ -1,15 +1,15 @@
 import * as THREE from "three";
-import Faces from "./voxel/faces.js";
+import Faces from "@utils/faces";
 import ResourceLoader from "./resource-loader.js";
-import BlockModel from "./block_model/blocks.js";
-import Chunk from "./voxel/chunk.js";
-import BlockState from "./voxel/block_state.js";
-import ChunkMesher from "./voxel/chunk_mesher.js";
-import Player from "./player.js";
+import BlockModel from "@block_model/blocks";
+import Chunk from "@chunk/chunk";
+import BlockState from "@chunk/block_state";
+import ChunkMesher from "@voxel/chunk_mesher";
+import Player from "@player/player";
 import { ChunkPipeline } from "./gpu_manager.js";
-import { ChunkSettings } from "../utils/constants.js";
-import BlockRefrence from "./voxel/block_refrence.js";
-import { Raycaster } from "../utils/voxel_dda.js";
+import { ChunkSettings } from "@utils/constants";
+import BlockRefrence from "@chunk/block_refrence";
+import { Raycaster } from "@utils/voxel_dda";
 
 
 export default class World {
@@ -17,7 +17,7 @@ export default class World {
 	constructor(resourceLoader) {
 		this.chunkMap = new Map();
 		this.resourceLoader = resourceLoader;
-		this.rayCaster = new Raycaster();
+		this.rayCaster = new Raycaster(this);
 
 		/**@type {Array<Player>} */
 		this.players = [];
@@ -37,7 +37,7 @@ export default class World {
 
 		this.doStuff();
 	}
-	pushDirtyChunk(chunk) {
+	makeChunkDirty(chunk) {
 		if (this.dirty_chunks.indexOf(chunk) === -1) {
 			this.dirty_chunks.push(chunk);
 			chunk.status = Chunk.DIRTY;
@@ -45,23 +45,9 @@ export default class World {
 	}
 
 	getBlockRefrence(x, y, z) {
-		const br = new BlockRefrence();
-		const chunk_x = Math.floor(x / ChunkSettings.SIZE);
-		const chunk_y = Math.floor(y / ChunkSettings.SIZE);
-		const chunk_z = Math.floor(z / ChunkSettings.SIZE);
-		const chunk = this.getChunk(chunk_x, chunk_y, chunk_z);
-		if (!chunk) return null;
-		br.chunk = chunk;
-		br.world = this;
+		const br = new BlockRefrence(this);
+		br.setWorldPosition(x, y, z);
 		
-		const local_x = x - chunk_x * ChunkSettings.SIZE;
-		const local_y = y - chunk_y * ChunkSettings.SIZE;
-		const local_z = z - chunk_z * ChunkSettings.SIZE;
-		br.x = local_x;
-		br.y = local_y;
-		br.z = local_z;
-
-		br.block_state = chunk.getBlockType(local_x, local_y, local_z);
 		return br;
 	}
 
@@ -132,6 +118,7 @@ export default class World {
 		chunk.id = this.chunkMap.size - 1;
 		// Set quad_offset based on chunk ID to avoid overlapping in the quad buffer
 		chunk.draw_details.quad_offset = chunk.id * ChunkSettings.BYTES_PER_CHUNK_QUADS;
+		// this.makeChunkDirty(chunk);
 		chunk.status = Chunk.DIRTY;
 
 		return chunk;
@@ -154,15 +141,13 @@ export default class World {
 
 		this.rayCaster.start = start;
 		this.rayCaster.dir = dir;
-		this.rayCaster.max_distance = 100;
-		this.rayCaster.chunk = chunk;
+		this.rayCaster.max_distance = 1000;
 
-		for (const voxel of this.rayCaster.voxel_line()) {
-			const block = chunk.getBlockType(voxel.x, voxel.y, voxel.z);
-			console.log(voxel);
-			if (block) {
-				console.log(block);
-			}			
+		const planks = new this.Blocks.WarpedPlanks();
+
+		for (const { br } of this.rayCaster.voxel_line()) {
+			console.log(...br.chunk?.position);
+			br.state = planks;
 		}
 	}
 

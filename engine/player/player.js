@@ -1,14 +1,14 @@
 import * as THREE from "three"
-import World from "./world.js";
+import World from "@world/world";
 import { CreativeFly } from "./fly_controls.js";
-import Chunk from "./voxel/chunk.js";
-import { ChunkRenderer } from "./gpu_manager.js";
-import InputManager from "../utils/input_manager.js";
+import Chunk from "@chunk/chunk";
+import { ChunkRenderer } from "@world/gpu_manager.js";
+import InputManager from "@utils/input_manager";
 
 export default class Player {
 	/**
 	 * @param {string} name
-	 * @param {import('../types/core.js').PlayerOptions} options
+	 * @param {import('../../types/core').PlayerOptions} options
 	 */
 	constructor(name, options = {}) {
 		this.name = name;
@@ -107,14 +107,16 @@ export default class Player {
 			.addEventListener('w,w:press', this.controls.startSprint.bind(this.controls))
 			.addEventListener('w,w:release', this.controls.endSprint.bind(this.controls))
 			.addEventListener('mousemove:hold', (ev) => {
-				
 				this.controls.handleMouseMove(ev.movementX, ev.movementY);
 			})
-			.addEventListener('resize:hold', this.web_component.setCanvasSize.bind(this.web_component));
+			.addEventListener('resize:hold', this.web_component.setCanvasSize.bind(this.web_component))
+			.addEventListener('mouse0:press', () => {
+				this.rayToWorld();
+			});
 	}
 
 	rayToWorld() {
-		// TODO: Implement raycast to world
-		// this.world.raycast(this.camera.position, this.camera.getWorldDirection());
+		const dir = new THREE.Vector3();
+		this.world.raycast(this.camera.position, this.camera.getWorldDirection(dir));
 	}
 }

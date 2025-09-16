@@ -1,12 +1,12 @@
-import BlockModel from "./blocks";
-import BlockState from "../voxel/block_state";
-import Faces from "../voxel/faces";
-import { mod } from "three/tsl";
+import BlockModel from "@block_model/blocks";
+import BlockState from "@chunk/block_state";
+import Faces from "@utils/faces";
 
 /**@param {string} str*/
 function toCammelCase(str) {
 	return str.replace(/(^|_)([a-z])/g, (m, p1, p2) => p2.toUpperCase());
 }
+
 
 export default class BlockObjectParser {
 	getModifier(modifier_name, modifier_data) {

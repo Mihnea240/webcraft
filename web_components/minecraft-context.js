@@ -1,4 +1,4 @@
-import ResourceLoader from "../engine/resource-loader.js";
+import ResourceLoader from "@world/resource-loader";
 
 export default class MinecraftContext extends HTMLElement {
 	static css = (function () {
@@ -22,9 +22,10 @@ export default class MinecraftContext extends HTMLElement {
 		this.shadowRoot.adoptedStyleSheets = [MinecraftContext.css];
 
 		this.resourceLoader = new ResourceLoader();
-		this.blockModel = null;
-
-		this.event = new CustomEvent("resource-loaded");
+		this.event = new CustomEvent("resource-loaded", {
+			bubbles: false,
+			detail: this.resourceLoader
+		});
 	}
 
 	get worlds() {
@@ -32,7 +33,7 @@ export default class MinecraftContext extends HTMLElement {
 	}
 
 	connectedCallback() {
-		this.resourceLoader.init(this.blockModel).then(_ => {
+		this.resourceLoader.init().then(_ => { 
 			for (const world of this.worlds) world.dispatchEvent(this.event);
 		});
 	}

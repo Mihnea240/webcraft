@@ -23,20 +23,21 @@ export default class Faces {
 	static face_string_array = [
 		"right", "top", "front", "back", "bottom", "left"
 	];
+
+	static to_vector = {
+		[Faces.RIGHT]: [1, 0, 0],
+		[Faces.LEFT]: [-1, 0, 0],
+		[Faces.TOP]: [0, 1, 0],
+		[Faces.BOTTOM]: [0, -1, 0],
+		[Faces.FRONT]: [0, 0, 1],
+		[Faces.BACK]: [0, 0, -1],
+	}
 	/**
 	 * @param {number} face_enum
 	 * @returns {Array<number, number, number>} 
 	 */
 	static toVec3(face_enum) {
-		switch (face_enum) {
-			case Faces.RIGHT: return [1, 0, 0];
-			case Faces.LEFT: return [-1, 0, 0];
-			case Faces.TOP: return [0, 1, 0];
-			case Faces.BOTTOM: return [0, -1, 0];
-			case Faces.FRONT: return [0, 0, 1];
-			case Faces.BACK: return [0, 0, -1];
-			default: throw new Error("Invalid face enum value");
-		}
+		return Faces.to_vector[face_enum];
 	}
 
 	static opposite(face_enum) {

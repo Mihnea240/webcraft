@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import { Array3D } from "../../utils/memory_management.js";
-import BlockPallet from "./block_pallet.js";
-import BlockState from "./block_state.js";
-import Faces from "./faces.js";
-import BlockModel from "../block_model/blocks.js";
-import { ChunkSettings } from "../../utils/constants.js";
+import { Array3D } from "@utils/memory_management";
+import BlockPallet from "@voxel/block_pallet";
+import BlockState from "@chunk/block_state";
+import Faces from "@utils/faces";
+import BlockModel from "@block_model/blocks";
+import { ChunkSettings } from "@utils/constants";
 
 
 export default class Chunk {
@@ -42,10 +42,6 @@ export default class Chunk {
 
 	needsRepaint() {
 		return this.block_repaints.length > 0;
-	}
-
-	isEmpty() {
-		return this.mesh
 	}
 	
 	getData(x, y, z) {

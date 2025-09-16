@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
-import BlockModel from "./block_model/blocks.js";
+import * as THREE from "three"
+import BlockModel from "@block_model/blocks";
 import { ChunkPipeline } from "./gpu_manager.js";
 
 export default class ResourceLoader {
