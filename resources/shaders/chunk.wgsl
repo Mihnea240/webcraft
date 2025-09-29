@@ -8,11 +8,17 @@ struct GeometryPacked {
 }
 struct Uniform {
     mvp: mat4x4<f32>,
-    time: u32
+    time: u32,
+    model_scale: f32,
+    _padding: vec2<f32>, // Padding for alignment
 }
 
 struct ChunkData {
     position: vec3<f32>,
+}
+
+struct ItemPosition {
+    screen_pos: vec2<f32>,  // Screen coordinates in clip space (-1 to 1)
 }
 
 struct VertexOutput {
@@ -29,11 +35,20 @@ struct VertexOutput {
 @group(1) @binding(0) var<uniform> v_uniform: Uniform;
 @group(1) @binding(1) var<storage, read> chunk_data: array<ChunkData>;
 
+@group(2) @binding(0) var<storage, read> item_positions: array<ItemPosition>;
+
 
 const PI_2: f32 = 1.5707963; // PI / 2
-const CHUNK_SIZE: f32 = 16.0;
-const INVERSE_CHUNK_SIZE: f32 = 1.0 / CHUNK_SIZE; 
-const BLOCK_CENTER = vec3<f32>(8.0, 8.0, 8.0) * INVERSE_CHUNK_SIZE;
+// CHUNK_SIZE is now replaced by v_uniform.model_scale
+fn getChunkSize() -> f32 {
+    return 16.0;
+}
+fn getInverseChunkSize() -> f32 {
+    return 1.0 / 16.0;
+}
+fn getBlockCenter() -> vec3<f32> {
+    return vec3<f32>(8.0, 8.0, 8.0) * getInverseChunkSize();
+}
 
 // Constant arrays for data that needs dynamic indexing
 const CUBE_VERTICES: array<vec3<f32>, 24> = array<vec3<f32>, 24>(
@@ -141,11 +156,11 @@ fn hash3D(p: vec3<i32>) -> f32 {
 }
 
 fn getCubePosition(geometry: GeometryPacked) -> vec3<f32> {
-    return geometry.pos_and_pivot_x.xyz * INVERSE_CHUNK_SIZE;
+    return geometry.pos_and_pivot_x.xyz * getInverseChunkSize();
 }
 
 fn getCubeScale(geometry: GeometryPacked) -> vec3<f32> {
-    return geometry.scale_and_pivot_y.xyz * INVERSE_CHUNK_SIZE;
+    return geometry.scale_and_pivot_y.xyz * getInverseChunkSize();
 }
 
 fn getCubeEulerRotation(geometry: GeometryPacked) -> vec3<f32> {
@@ -157,7 +172,7 @@ fn getCubePivot(geometry: GeometryPacked) -> vec3<f32> {
         geometry.pos_and_pivot_x.w,
         geometry.scale_and_pivot_y.w,
         geometry.rotation_and_pivot_z.w
-    ) * INVERSE_CHUNK_SIZE;
+    ) * getInverseChunkSize();
 }
 
 fn getCubeInset(geometry: GeometryPacked) -> f32 {
@@ -344,18 +359,18 @@ fn vs_main(
     let origin = getCubePosition(transform);
     let scale = getCubeScale(transform);
     let pivot = getCubePivot(transform);
-    let inset = getCubeInset(transform) * NORMALS[normal_index] * INVERSE_CHUNK_SIZE;
+    let inset = getCubeInset(transform) * NORMALS[normal_index] * getInverseChunkSize();
     let inset_angle = getCubeInsetAngle(transform);
 
-    base_position -= vec3<f32>(1.0, 0.0, 1.0) * getCubeInset(transform) * INVERSE_CHUNK_SIZE;
+    base_position -= vec3<f32>(1.0, 0.0, 1.0) * getCubeInset(transform) * getInverseChunkSize();
     var model_vertex = rotation_matrix * (base_position * scale - pivot - inset) + pivot + origin;
-    model_vertex = block_placement_rotation * (model_vertex - BLOCK_CENTER) + BLOCK_CENTER;
+    model_vertex = block_placement_rotation * (model_vertex - getBlockCenter()) + getBlockCenter();
 	// World position
-    var world_vertex = model_vertex + chunk_position * CHUNK_SIZE + vec3<f32>(position_in_chunk);
+    var world_vertex = model_vertex + chunk_position * getChunkSize() + vec3<f32>(position_in_chunk);
 
     if (hasRandomOffset(transform)) {
         // Use f32 math for chunk_position and position_in_chunk
-        let world_block_pos = chunk_position * CHUNK_SIZE + vec3<f32>(position_in_chunk);
+        let world_block_pos = chunk_position * getChunkSize() + vec3<f32>(position_in_chunk);
         world_vertex += getVegetationOffsetF32(world_block_pos);
     }
 

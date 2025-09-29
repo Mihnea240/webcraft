@@ -53,7 +53,7 @@ export default class ChunkMesher {
 			sky_light: 4,
 			temperature: 8,
 			humidity: 8,
-		}, 4);
+		}, { bytes_per_bucket: 4});
 		this.bitView = new this.bit_packer.BitView();
 	}
 

@@ -8,6 +8,9 @@ export class ChunkPipeline {
 		{ binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: "uniform" } }, // Camera transform
 		{ binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } }, // Chunk data SSBO
 	];
+	static item_layout = [
+		{ binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } }, // Item positions
+	];
 	static static_layout = [
 		{ binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } }, // Geometry data
 		{ binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } }, // Texture data
@@ -100,11 +103,19 @@ export class ChunkPipeline {
 		});
 
 		this.device.queue.writeBuffer(this.texture_ssbo, 0, texture_data);
+
+		// Create item positions buffer
+		this.item_positions_buffer = this.device.createBuffer({
+			size: ChunkSettings.BYTES_PER_ITEM_POSITION_BUFFER,
+			usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+			label: "Item positions buffer"
+		});
 	}
 
 	createBindGroups() {
 		this.static_data_layout = this.device.createBindGroupLayout({ entries: /** @type {GPUBindGroupLayoutEntry[]} */ (ChunkPipeline.static_layout) });
 		this.dynamic_data_layout = this.device.createBindGroupLayout({ entries: /** @type {GPUBindGroupLayoutEntry[]} */ (ChunkPipeline.dynamic_layout) });
+		this.item_data_layout = this.device.createBindGroupLayout({ entries: /** @type {GPUBindGroupLayoutEntry[]} */ (ChunkPipeline.item_layout) });
 
 		this.static_data_bind_group = this.device.createBindGroup({
 			layout: this.static_data_layout,
@@ -122,13 +133,19 @@ export class ChunkPipeline {
 				{ binding: 1, resource: { buffer: this.chunk_data_buffer } },
 			]
 		});
+		this.item_data_bind_group = this.device.createBindGroup({
+			layout: this.item_data_layout,
+			entries: [
+				{ binding: 0, resource: { buffer: this.item_positions_buffer } },
+			]
+		});
 	}
 
 	createPipeline() {
 		this.pipeline = this.device.createRenderPipeline({
 			label: "Chunk render pipeline",
 			layout: this.device.createPipelineLayout({
-				bindGroupLayouts: [this.static_data_layout, this.dynamic_data_layout]
+				bindGroupLayouts: [this.static_data_layout, this.dynamic_data_layout, this.item_data_layout]
 			}),
 			primitive: {
 				topology: "triangle-strip",
@@ -188,6 +205,20 @@ export class ChunkPipeline {
 			0,  // dataOffset - start from beginning of source buffer
 			cnt * ChunkSettings.ELEMENTS_PER_QUAD  // size in elements (uint32s)
 		);
+	}
+
+	setItemPositions(itemPositions) {
+		if (itemPositions.length === 0) return;
+		this.device.queue.writeBuffer(this.item_positions_buffer, 0, itemPositions);
+	}
+
+	/**
+	 * Set the model scale in uniform buffer for item rendering
+	 * @param {number} scale - The model scale factor
+	 */
+	setModelScale(scale) {
+		const scaleData = new Float32Array([scale]);
+		this.device.queue.writeBuffer(this.uniform_buffer, 17 * 4, scaleData); // Offset by mvp + time
 	}
 }
 
@@ -303,6 +334,7 @@ export class ChunkRenderer {
 		this.render_pass.setPipeline(this.chunk_pipeline.pipeline);
 		this.render_pass.setBindGroup(0, this.chunk_pipeline.static_data_bind_group);
 		this.render_pass.setBindGroup(1, this.chunk_pipeline.dynamic_data_bind_group);
+		this.render_pass.setBindGroup(2, this.chunk_pipeline.item_data_bind_group);
 	}
 
 	setTime(time) {
@@ -331,6 +363,7 @@ export class ChunkRenderer {
 	}
 
 	updateUniforms() {
+		this.chunk_pipeline.setModelScale(16.0);
 		this.device.queue.writeBuffer(this.chunk_pipeline.uniform_buffer, 0, this.uniform_buffer);
 	}
 

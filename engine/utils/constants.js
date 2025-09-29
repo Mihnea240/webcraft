@@ -29,6 +29,13 @@ export const ChunkSettings = {
 		return this.WORLD_CNT * this.BYTES_PER_CHUNK_DATA;
 	},
 	BYTES_PER_CHUNK_ID: 4,
+	// Item rendering constants
+	MAX_ITEMS: 1024,
+	ELEMENTS_PER_ITEM_POSITION: 2, // vec2<f32> for screen position
+	BYTES_PER_ITEM_POSITION_ELEMENT: 4,
+	get BYTES_PER_ITEM_POSITION_BUFFER() {
+		return this.MAX_ITEMS * this.ELEMENTS_PER_ITEM_POSITION * this.BYTES_PER_ITEM_POSITION_ELEMENT;
+	},
 };
 
 export const TransformSettings = {
@@ -39,9 +46,9 @@ export const TransformSettings = {
 		return this.ELEMENTS_PER_TRANSFORM * this.BYTES_PER_ELEMENT;
 	},
 	ELEMENTS_PER_METADATA: 1,
-	BYTES_PER_METADATA: 2,
+	BYTES_PER_METADATA_ELEMENT: 2,
 	get BYTES_PER_METADATA() {
-		return this.ELEMENTS_PER_METADATA * this.BYTES_PER_METADATA;
+		return this.ELEMENTS_PER_METADATA * this.BYTES_PER_METADATA_ELEMENT;
 	},
 	
 };
