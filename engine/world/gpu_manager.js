@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import Chunk from "@chunk/chunk";
-import { ChunkSettings } from "@engine/utils/constants";
-
+import { ChunkSettings } from "@utils/constants";
+import { BitPacker } from "@utils/bit_packer";
 
 export class ChunkPipeline {
 	static dynamic_layout = [
@@ -21,6 +21,13 @@ export class ChunkPipeline {
 	constructor() {
 		this.render_format = navigator.gpu.getPreferredCanvasFormat();
 		this.sample_count = 4; // 4x MSAA - can be 1, 4, or 8
+
+		this.uniform_packer = new BitPacker({
+			mvp: "f32[16]",
+			time: "u32",
+			model_scale: "f32",
+		}, { alignment: 4 });
+
 	}
 
 	async getGpuContext() {
@@ -211,15 +218,6 @@ export class ChunkPipeline {
 		if (itemPositions.length === 0) return;
 		this.device.queue.writeBuffer(this.item_positions_buffer, 0, itemPositions);
 	}
-
-	/**
-	 * Set the model scale in uniform buffer for item rendering
-	 * @param {number} scale - The model scale factor
-	 */
-	setModelScale(scale) {
-		const scaleData = new Float32Array([scale]);
-		this.device.queue.writeBuffer(this.uniform_buffer, 17 * 4, scaleData); // Offset by mvp + time
-	}
 }
 
 
@@ -250,6 +248,8 @@ export class ChunkRenderer {
 		this.chunk_id_buffer = new Uint32Array(ChunkSettings.WORLD_CNT * 4);
 		this.updateCanvasContext();
 		this.active_pass = false;
+
+		this.uniforms = new this.chunk_pipeline.uniform_packer.BitView(this.uniform_buffer.buffer, 0);
 	}
 
 	updateCanvasContext() {
@@ -326,23 +326,22 @@ export class ChunkRenderer {
 			this.camera.projectionMatrix,
 			this.camera.matrixWorldInverse
 		);
-		this.util_matrix.toArray(this.util_matrix_array);
-		this.setMVPMatrix(this.util_matrix_array);
-		this.setTime(time);
+
+		this.uniforms.mvp.set(this.util_matrix.elements);
+		this.uniforms.time = time;
+		this.uniforms.model_scale = 16.0;
+		// this.util_matrix_array.set(this.util_matrix.elements);
+		// this.uniform_buffer.set(this.util_matrix_array, 0);
+		// this.uniform_buffer_uint_view[16] = time;
+		// this.uniform_buffer[17] = 16.0; // model_scale
+
+		console.log(this.uniforms.mvp.get());
 		this.updateUniforms();
 
 		this.render_pass.setPipeline(this.chunk_pipeline.pipeline);
 		this.render_pass.setBindGroup(0, this.chunk_pipeline.static_data_bind_group);
 		this.render_pass.setBindGroup(1, this.chunk_pipeline.dynamic_data_bind_group);
 		this.render_pass.setBindGroup(2, this.chunk_pipeline.item_data_bind_group);
-	}
-
-	setTime(time) {
-		this.uniform_buffer_uint_view[20] = time;
-	}
-
-	setMVPMatrix(matrix) {
-		this.uniform_buffer.set(matrix, 0);
 	}
 
 	setChunkData(chunks) {
@@ -363,7 +362,6 @@ export class ChunkRenderer {
 	}
 
 	updateUniforms() {
-		this.chunk_pipeline.setModelScale(16.0);
 		this.device.queue.writeBuffer(this.chunk_pipeline.uniform_buffer, 0, this.uniform_buffer);
 	}
 

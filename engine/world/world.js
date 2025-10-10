@@ -146,7 +146,6 @@ export default class World {
 		const planks = new this.Blocks.WarpedPlanks();
 
 		for (const { br } of this.rayCaster.voxel_line()) {
-			console.log(...br.chunk?.position);
 			br.state = planks;
 		}
 	}
@@ -207,7 +206,6 @@ export default class World {
 		// console.log(buttons[Faces.UP].getProperty(BlockState.PLACING))
 
 		const ref = this.getBlockRefrence(0, 0, 0);
-		console.log(ref);
 		setInterval(() => {
 			if (!ref) return;
 			const current = ref.getProperty(BlockState.FACING);

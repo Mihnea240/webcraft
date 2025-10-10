@@ -48,7 +48,6 @@ export default class BlockState {
 
 	static computePackingMasks() {
 		let offset = 0, data = this.bit_packing, size = 0;
-		console.log("Computing packing masks for BlockState"); 
 		for (const entry of data) {
 			size = entry[0];
 			entry[1] <<= offset; // shift the mask

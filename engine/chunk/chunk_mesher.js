@@ -5,7 +5,7 @@ import BlockState from "@chunk/block_state";
 import Chunk from "@chunk/chunk";
 import { Array3D } from "@engine/utils/memory_management";
 import { ChunkPipeline } from "@world/gpu_manager";
-import { BitPacker } from "@engine/utils/bit_packer";
+import { BitPacker } from "@utils/bit_packer";
 import { ChunkSettings } from "@engine/utils/constants";
 
 function ctz32(x) {
@@ -33,31 +33,42 @@ export default class ChunkMesher {
 		this.quad_cnt = 0;
 		this.util_array = new Array(2);
 
+		// BitPacker layout with MSB ordering - now matches shader expectations naturally
 		this.bit_packer = new BitPacker({
-			x: 4,
-			y: 4,
-			z: 4,
-			texture_id: 12,
-			quad_normal: 3,
-			placing_face: 3,
-			facing: 2,
+			// First uint32 (quad.x) - natural order with MSB bit_flow
+			x: 'bit4',             // bits 31-28 (MSB)
+			y: 'bit4',             // bits 27-24
+			z: 'bit4',             // bits 23-20
+			texture_id: 'bit12',   // bits 19-8
+			quad_normal: 'bit3',   // bits 7-5
+			placing_face: 'bit3',  // bits 4-2
+			facing: 'bit2',        // bits 1-0 (LSB)
 
-			transform: 10,
-			ao_exponent: 8,
-			ao: 8,
-			light: 4,
-			isotropic: 1,
-			flag: 1,
+			// Second uint32 (quad.y) - natural order with MSB bit_flow
+			transform: 'bit10',    // bits 31-22 (MSB)
+			ao: 'bit8',            // bits 21-14
+			ao_exponent: 'bit8',   // bits 13-6
+			light: 'bit4',         // bits 5-2
+			flag: 'bit1',          // bit 1
+			isotropic: 'bit1',     // bit 0 (LSB)
 
-			light_corners: 4,
-			sky_light: 4,
-			temperature: 8,
-			humidity: 8,
-		}, { bytes_per_bucket: 4});
-		this.bitView = new this.bit_packer.BitView();
+			// Third uint32 (quad.z) - natural order with MSB bit_flow
+			light_corners: 'bit4', // bits 31-28 (MSB)
+			sky_light: 'bit4',     // bits 27-24
+			temperature: 'bit8',   // bits 23-16
+			humidity: 'bit8',      // bits 15-8
+			_reserved: 'bit8',     // bits 7-0 (LSB, for future use)
+		}, { bit_flow: 'MSB', alignment: 4 });
+		
+		this.quadView = new this.bit_packer.BitView(this.quad_buffer.buffer, 0);
+
+		// for (const field_name in this.bit_packer.fields) {
+		// 	const field = this.bit_packer.fields[field_name];
+		// 	console.log(field_name, field, field.quant_size, field.bit_offset_in_quant);
+		// }
 	}
 
-	generateAxisBitArrays() {
+	generateAxisBitArrays(){
 		let value, x_index, y_index, z_index;
 		const prop_id = BlockState.FULL_BLOCK;
 		for (let x = 0; x < Chunk.size; x++) {
@@ -148,7 +159,6 @@ export default class ChunkMesher {
 		let offset = this.quad_cnt * 3;
 		
 		const blockModel = this.blockModel;
-		const bitView = this.bitView;
 		const material_view = blockModel.getMaterialById(type.material_id);
 		const atlas_view = blockModel.textureRegistry.atlas_view;
 
@@ -165,10 +175,7 @@ export default class ChunkMesher {
 				atlas_view.id = atlas_id;
 				const texture_id = atlas_view.get();
 
-				bitView.set_all(buffer, offset,
-					x, y, z, texture_id, axis, placing, facing, id, ao_exponent, 0,
-					0, 0, 0, 0, 0, 0, 0
-				);
+				this.setQuadData(offset, x, y, z, texture_id, axis, placing, facing, id, ao_exponent);
 				this.chunk.voxel_to_first_quad.set(x, y, z, offset);
 				offset += 3;
 				this.quad_cnt++;
@@ -184,29 +191,52 @@ export default class ChunkMesher {
 				for(let i = 0; i < 3; i++) buffer[offset + i] = 0;
 
 
-				bitView.set_all(buffer, offset,
-					x, y, z, texture_id, i, placing, facing, id, ao_exponent, 0,
-					0, 0, 0, 0, 0, 0, 0
-				);
+				this.setQuadData(offset, x, y, z, texture_id, i, placing, facing, id, ao_exponent);
 				this.chunk.voxel_to_first_quad.set(x, y, z, offset);
 				offset += 3;
 				this.quad_cnt++;
-
-				// console.log(material_view,material_view.id, atlas_id, texture_id)
-				// console.log(
-				// 	texture_id,
-				// 	blockModel.textureRegistry.textureView(texture_id).u,
-				// 	blockModel.textureRegistry.textureView(texture_id).v,
-				// 	blockModel.textureRegistry.texture_data.buffer[texture_id * 4],
-				// 	blockModel.textureRegistry.atlas_tile_data.buffer
-				// );
-
 			}
 
 		}
 	}
 
+	/**
+	 * Set quad data using BitPacker with correct MSB layout to match shader
+	 * @param {number} offset - Offset in uint32s (will be converted to bytes)
+	 * @param {number} x - X coordinate (0-15)
+	 * @param {number} y - Y coordinate (0-15)
+	 * @param {number} z - Z coordinate (0-15)
+	 * @param {number} texture_id - Texture ID
+	 * @param {number} axis - Face axis
+	 * @param {number} placing - Placing face
+	 * @param {number} facing - Facing direction
+	 * @param {number} id - Transform/geometry ID
+	 * @param {number} ao_exponent - AO exponent
+	 */
+	setQuadData(offset, x, y, z, texture_id, axis, placing, facing, id, ao_exponent) {
+		const view = this.quadView;
+		view.offset = offset * 4; 
 
+		view.x = x;
+		view.y = y;
+		view.z = z;
+		view.texture_id = texture_id;
+		view.quad_normal = axis;
+		view.placing_face = placing;
+		view.facing = facing;
+		view.transform = id;
+		view.ao_exponent = ao_exponent;
+		view.ao = 0;
+		view.light = 0;
+		view.isotropic = 0;
+		view.flag = 0;
+		view.light_corners = 0;
+		view.sky_light = 0;
+		view.temperature = 0;
+		view.humidity = 0;
+
+		// console.log(view.x, view.y, view.z, view.texture_id, view.quad_normal, view.placing_face, view.facing, view.transform);
+	}
 
 	computeChunk(chunk) {
 		this.chunk = chunk;

@@ -1,4 +1,5 @@
-import Faces from "@engine/utils/faces";
+import Faces from "../utils/faces.js";
+import { BitPacker } from "../utils/bit_packer.js";
 
 const DEG2RAD = Math.PI / 180;
 
@@ -12,6 +13,353 @@ function arrayCheck(array) {
 // origin_y scale_y rotation_y inset_angle uv_data
 // origin_z scale_z rotation_z idk         uv_data
 // pivot_x  pivot_y pivot_z    idk         uv_data
+// Modern BitPacker-based TransformView
+// export class TransformView {
+// 	static floats_per_transform = 20;
+// 	static shorts_per_data = 1;
+// 	static transform_cnt = 1000; // Maximum number of transforms
+// 	static cube_size = 16; // Default cube size
+// 	static texture_size = 16; // Default texture size
+	
+// 	static default_scale = [TransformView.cube_size, TransformView.cube_size, TransformView.cube_size];
+// 	static default_array = [0, 0, 0];
+// 	static default_pivot = [0, 0, 0];
+
+// 	// BitPacker schema for transform data (80 bytes = 20 floats)
+// 	static transform_packer = new BitPacker({
+// 		origin: "f32[3]",      // offset 0-2: origin x,y,z
+// 		pivot_x: "f32",        // offset 3: pivot x
+// 		scale: "f32[3]",       // offset 4-6: scale x,y,z  
+// 		pivot_y: "f32",        // offset 7: pivot y
+// 		rotation: "f32[3]",    // offset 8-10: rotation x,y,z
+// 		pivot_z: "f32",        // offset 11: pivot z
+// 		inset: "f32",          // offset 12: inset value
+// 		inset_angle: "f32",    // offset 13: inset angle
+// 		_reserved: "f32[2]",   // offset 14-15: reserved space
+		
+// 		// UV data for 6 faces × 4 coordinates (u,v,w,h) = 24 values  
+// 		// Using alignment4 to create proper padding space for flags
+// 		uv_data: 'bit5[24]',  // 120 bits (512-631) → 128 bits with 8 padding bits
+		
+// 		random_offset: { type: 'bit1', bit_offset: 632 },
+// 		use_placing_rotation: { type: 'bit1', bit_offset: 633 },
+// 	}, { alignment: 4 }); // LSB, 4-byte alignment
+
+// 	static data_packer = new BitPacker({
+// 		cull_rule: "u8",    // 8 bits at start
+// 		mask: "u8",         // 8 bits after cull_rule  
+// 	}, { alignment: 2 }); // 2-byte alignment
+
+// 	constructor(transform_buffer, data_buffer, id) {
+// 		this.transform_buffer = transform_buffer;
+// 		this.data_buffer = data_buffer;
+// 		this._id = id;
+		
+// 		// Create BitPacker views for this transform
+// 		/** @type {any} */
+// 		this.transform_view = new TransformView.transform_packer.BitView(
+// 			transform_buffer.buffer, 
+// 			id * TransformView.floats_per_transform * 4 // 4 bytes per float
+// 		);
+		
+// 		/** @type {any} */
+// 		this.data_view = new TransformView.data_packer.BitView(
+// 			data_buffer.buffer,
+// 			id * TransformView.shorts_per_data * 2 // 2 bytes per short
+// 		);
+		
+// 		// For compatibility with existing code
+// 		this.uint_transform_view = new Uint32Array(this.transform_buffer.buffer);
+// 		this.face_uvs = new Array(6);
+// 	}
+
+// 	set id(value) { 
+// 		this._id = value;
+// 		// Update BitPacker view offsets
+// 		const transform_offset = value * TransformView.floats_per_transform * 4;
+// 		const data_offset = value * TransformView.shorts_per_data * 2;
+		
+// 		this.transform_view = new TransformView.transform_packer.BitView(
+// 			this.transform_buffer.buffer, transform_offset
+// 		);
+// 		this.data_view = new TransformView.data_packer.BitView(
+// 			this.data_buffer.buffer, data_offset
+// 		);
+// 	}
+// 	get id() { 
+// 		return this._id;
+// 	}
+
+// 	// Modern BitPacker-based properties
+// 	set inset(value) {
+// 		this.transform_view.inset = value;
+// 	}
+// 	get inset() {
+// 		return this.transform_view.inset;
+// 	}
+// 	offsetInset(value) {
+// 		this.transform_view.inset += value;
+// 	}
+
+// 	set inset_angle(value) {
+// 		this.transform_view.inset_angle = value * DEG2RAD;
+// 	}
+// 	get inset_angle() {
+// 		return this.transform_view.inset_angle;
+// 	}
+// 	offsetInsetAngle(value) {
+// 		this.transform_view.inset_angle += value;
+// 	}
+	
+// 	// BitPacker flag properties
+// 	set random_offset(value) {
+// 		this.transform_view.random_offset = value ? 1 : 0;
+// 	}
+// 	get random_offset() { 
+// 		return this.transform_view.random_offset !== 0; 
+// 	}
+
+// 	set use_placing_rotation(value) {
+// 		this.transform_view.use_placing_rotation = value ? 1 : 0;
+// 	}
+// 	get use_placing_rotation() {
+// 		return this.transform_view.use_placing_rotation !== 0;
+// 	}
+
+// 	set uv_lock(value) {
+// 		// Direct assignment to 6-bit field in alignment padding space
+// 		this.transform_view.uv_lock = value & 63;
+// 	}
+// 	get uv_lock() {
+// 		// Direct access to 6-bit field
+// 		return this.transform_view.uv_lock;
+// 	}
+
+// 	set mask(value) {
+// 		this.data_view.mask = value & 0xFF;
+// 	}
+// 	get mask() {
+// 		return this.data_view.mask;
+// 	}
+
+// 	set cull_rule(value) {
+// 		this.data_view.cull_rule = value & 0xFF;
+// 	}
+// 	get cull_rule() {
+// 		return this.data_view.cull_rule;
+// 	}
+
+// 	set origin(array) {
+// 		if(!arrayCheck(array)) return;
+// 		this.transform_view.origin.set(array);
+// 	}
+
+// 	get origin() {
+// 		return this.transform_view.origin;
+// 	}
+	
+// 	offsetOrigin(array) {
+// 		if(!arrayCheck(array)) return this;
+// 		for(let i = 0; i < 3; i++) {
+// 			this.transform_view.origin[i] += array[i];
+// 		}
+// 		return this;
+// 	}
+
+// 	// Scale methods
+// 	set scale(array) {
+// 		if(!arrayCheck(array)) return;
+// 		this.transform_view.scale.set(array);
+// 	}
+// 	get scale() {
+// 		return this.transform_view.scale;
+// 	}
+	
+// 	offsetScale(array) {
+// 		if(!arrayCheck(array)) return this;
+// 		for(let i = 0; i < 3; i++) {
+// 			this.transform_view.scale[i] += array[i];
+// 		}
+// 		return this;
+// 	}
+
+// 	// Rotation methods
+// 	set rotation(array) { 
+// 		if(!arrayCheck(array)) return;
+// 		for(let i = 0; i < 3; i++) {
+// 			this.transform_view.rotation[i] = array[i] * DEG2RAD;
+// 		}
+// 	}
+// 	get rotation() {
+// 		return this.transform_view.rotation;
+// 	}
+	
+// 	offsetRotation(array) {
+// 		if(!arrayCheck(array)) return this;
+// 		for(let i = 0; i < 3; i++) {
+// 			this.transform_view.rotation[i] += array[i] * DEG2RAD;
+// 		}
+// 		return this;
+// 	}
+
+// 	// Pivot methods (distributed across the transform layout)
+// 	set pivot(array) {
+// 		if (!arrayCheck(array)) return;
+// 		this.transform_view.pivot_x = array[0];
+// 		this.transform_view.pivot_y = array[1];
+// 		this.transform_view.pivot_z = array[2];
+// 	}
+// 	get pivot() {
+// 		return [this.transform_view.pivot_x, this.transform_view.pivot_y, this.transform_view.pivot_z];
+// 	}
+// 	offsetPivot(array) {
+// 		if(!arrayCheck(array)) return this;
+// 		this.transform_view.pivot_x += array[0];
+// 		this.transform_view.pivot_y += array[1];
+// 		this.transform_view.pivot_z += array[2];
+// 		return this;
+// 	}
+
+// 	// Modern UV access using linear uv_data array with alignment4
+// 	setFaceUV(face, u, v, w, h) {
+// 		const base_index = face * 4;
+// 		this.transform_view.uv_data[base_index + 0] = u & 31; // 5-bit max
+// 		this.transform_view.uv_data[base_index + 1] = v & 31;
+// 		this.transform_view.uv_data[base_index + 2] = w & 31;
+// 		this.transform_view.uv_data[base_index + 3] = h & 31;
+// 	}
+
+// 	getFaceUVCoords(face) {
+// 		const base_index = face * 4;
+// 		return [
+// 			this.transform_view.uv_data[base_index + 0],
+// 			this.transform_view.uv_data[base_index + 1],
+// 			this.transform_view.uv_data[base_index + 2],
+// 			this.transform_view.uv_data[base_index + 3]
+// 		];
+// 	}
+
+// 	packUVs() {
+// 		// With bit5[24], UV packing is automatic - just set face_uvs to uv_data
+// 		for (let face = 0; face < 6; face++) {
+// 			if (this.face_uvs[face]) {
+// 				this.setFaceUV(
+// 					face,
+// 					this.face_uvs[face][0] & 31,
+// 					this.face_uvs[face][1] & 31, 
+// 					this.face_uvs[face][2] & 31,
+// 					this.face_uvs[face][3] & 31
+// 				);
+// 			}
+// 		}
+// 		return this.mask;
+// 	}
+
+// 	defaultFaceUvs() {
+// 		for (let i = 0; i < 6; i++) {
+// 			this.face_uvs[i] = [0, 0, TransformView.texture_size, TransformView.texture_size];
+// 		}
+// 		// Also set in UV data array
+// 		for (let face = 0; face < 6; face++) {
+// 			this.setFaceUV(face, 0, 0, TransformView.texture_size, TransformView.texture_size);
+// 		}
+// 	}
+
+// 	parseFaceUvs(face_uv_json) {
+// 		for(let i = 0; i < 6; i++) {
+// 			const face = Faces.face_string_array_cardinal[i];
+// 			let value = face_uv_json?.[face];
+
+// 			if (face_uv_json?.side && i != Faces.TOP && i != Faces.BOTTOM) value = face_uv_json.side;
+// 			if (value === "none") this.mask |= 1 << i;
+			
+// 			if (!value) value = [0, 0, TransformView.texture_size, TransformView.texture_size];
+// 			if (Array.isArray(value)) this.face_uvs[i] = value;
+// 		}
+
+// 		this.packUVs();
+// 	}
+
+// 	parseUvLock(uv_lock) {
+// 		if(typeof uv_lock === 'boolean') {
+// 			this.uv_lock = uv_lock ? 63 : 0;
+// 			return;
+// 		}
+// 		if (typeof uv_lock === 'object') {
+// 			let value = 0;
+// 			for (let i = 0; i < 6; i++) {
+// 				const face = Faces.face_string_array_cardinal[i];
+// 				if (uv_lock?.side && i != Faces.TOP && i != Faces.BOTTOM) {
+// 					if (uv_lock.side) value |= 1 << i;
+// 				}
+// 				if (uv_lock?.[face]) {
+// 					value |= 1 << i;
+// 				}
+// 			}
+// 			this.uv_lock = value;
+// 			return;
+// 		}
+// 	}
+
+// 	getFaceUv() {
+// 		// Return the underlying uint32 representation for compatibility
+// 		const base_offset = this._id * TransformView.floats_per_transform + 16;
+// 		return [
+// 			this.uint_transform_view[base_offset],
+// 			this.uint_transform_view[base_offset + 1],
+// 			this.uint_transform_view[base_offset + 2],
+// 			this.uint_transform_view[base_offset + 3],
+// 		];
+// 	}
+
+// 	/**@param {TransformView} other*/
+// 	copy(other) {
+// 		// Copy transform data using BitPacker
+// 		this.transform_view.origin.set(other.transform_view.origin.get());
+// 		this.transform_view.scale.set(other.transform_view.scale.get());
+// 		this.transform_view.rotation.set(other.transform_view.rotation.get());
+// 		this.transform_view.pivot_x = other.transform_view.pivot_x;
+// 		this.transform_view.pivot_y = other.transform_view.pivot_y;
+// 		this.transform_view.pivot_z = other.transform_view.pivot_z;
+// 		this.transform_view.inset = other.transform_view.inset;
+// 		this.transform_view.inset_angle = other.transform_view.inset_angle;
+		
+// 		// Copy UV data - linear array (24 values)
+// 		for (let i = 0; i < 24; i++) {
+// 			this.transform_view.uv_data[i] = other.transform_view.uv_data[i];
+// 		}
+		
+// 		// Copy flag bits  
+// 		this.transform_view.random_offset = other.transform_view.random_offset;
+// 		this.transform_view.use_placing_rotation = other.transform_view.use_placing_rotation;
+// 		this.transform_view.uv_lock = other.transform_view.uv_lock;
+
+// 		// Copy data buffer
+// 		this.data_view.mask = other.data_view.mask;
+// 		this.data_view.cull_rule = other.data_view.cull_rule;
+// 	}
+
+// 	// fromJson(json_data, parent_transform) {
+// 	// 	this.defaultFaceUvs();
+
+// 	// 	this.origin = json_data.origin || TransformView.default_array;
+// 	// 	this.scale = json_data.scale || TransformView.default_scale;
+// 	// 	this.rotation = json_data.rotation || TransformView.default_array;
+// 	// 	this.inset = json_data.inset || 0;
+// 	// 	this.inset_angle = json_data.inset_angle || 0;
+// 	// 	this.random_offset = json_data.random_offset || false;
+// 	// 	this.parseFaceUvs(json_data.face_uvs);
+
+// 	// 	if(parent_transform) {
+// 	// 		this.offsetOrigin(parent_transform.origin);
+// 	// 		this.offsetScale(parent_transform.scale);
+// 	// 		this.offsetRotation(parent_transform.rotation);
+// 	// 		this.offsetInset(parent_transform.inset);
+// 	// 		this.offsetInsetAngle(parent_transform.inset_angle);
+// 	// 	}
+// 	// }
+// }
+
 export class TransformView{
 	static floats_per_transform = 20;
 	static shorts_per_data = 1;
@@ -358,7 +706,6 @@ export class GeometryRegistry {
 				if (view[key] === undefined) continue;
 				view[key] = json_data[key];
 			}
-			console.log(parent_transform.getFaceUv(), view.getFaceUv());
 
 			if (json_data.face_uvs) {
 				view.defaultFaceUvs();

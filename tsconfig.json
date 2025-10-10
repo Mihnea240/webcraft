@@ -1,38 +1,37 @@
 {
   "compilerOptions": {
-    "target": "ES2023",
-    "module": "ES2022",
-    "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true,
-    "strict": false,
-    "skipLibCheck": true,
     "checkJs": true,
     "allowJs": true,
     "noEmit": true,
+    "maxNodeModuleJsDepth": 0,
+    "baseUrl": ".",
     "typeRoots": ["./types", "./node_modules/@types"],
+	"target": "ES2023",
+    "lib": ["ES2023", "DOM"],
+
     "paths": {
-      "@types/*": ["./types/*"],
       "@engine/*": ["./engine/*"],
       "@utils/*": ["./engine/utils/*"],
       "@resources/*": ["./resources/*"],
       "@web-components/*": ["./web_components/*"],
       "@examples/*": ["./examples/*"],
-	  "@chunk/*": ["./engine/chunk/*"],
+      "@chunk/*": ["./engine/chunk/*"],
       
       // Engine subsystems
       "@voxel/*": ["./engine/chunk/*"],
       "@block/*": ["./engine/block/*"],
       "@player/*": ["./engine/player/*"],
-      "@world/*": ["./engine/world/*"]
+      "@world/*": ["./engine/world/*"],
     }
   },
   "include": [
-    "**/*.js",
-    "**/*.mjs",
+    "engine/**/*.js",
+    "web_components/**/*.js",
     "types/**/*.d.ts"
   ],
   "exclude": [
     "node_modules",
-    "archive"
-  ],
+    "archive",
+    "**/*.min.js"
+  ]
 }

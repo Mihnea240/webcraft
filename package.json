@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "@webgpu/types": "^0.1.64",
+    "@types/three": "^0.180.0",
+    "@webgpu/types": "^0.1.65",
+    "typescript": "^5.9.3",
     "vite": "^7.0.4"
   },
   "dependencies": {

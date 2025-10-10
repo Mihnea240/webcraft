@@ -6,7 +6,7 @@ export default defineConfig({
 		alias: {
 			'@types': path.resolve(__dirname, './types'),
 			'@engine': path.resolve(__dirname, './engine'),
-			'@utils': path.resolve(__dirname, './utils'),
+			'@utils': path.resolve(__dirname, './engine/utils'),
 			'@resources': path.resolve(__dirname, './resources'),
 			'@web_components': path.resolve(__dirname, './web_components'),
 			'@examples': path.resolve(__dirname, './examples'),
@@ -31,12 +31,12 @@ export default defineConfig({
 			'@engine/chunk-mesher': path.resolve(__dirname, './engine/chunk/chunk_mesher.js'),
 
 			// Utilities
-			'@utils/constants': path.resolve(__dirname, './utils/constants.js'),
-			'@utils/input-manager': path.resolve(__dirname, './utils/input_manager.js'),
-			'@utils/voxel_dda': path.resolve(__dirname, './utils/voxel_dda.js'),
-			'@utils/faces': path.resolve(__dirname, './utils/faces.js'),
-			'@utils/memory_management': path.resolve(__dirname, './utils/memory_management.js'),
-			'@utils/bit_packer': path.resolve(__dirname, './utils/bit_packer.js'),
+			'@utils/constants': path.resolve(__dirname, './engine/utils/constants.js'),
+			'@utils/input-manager': path.resolve(__dirname, './engine/utils/input_manager.js'),
+			'@utils/voxel_dda': path.resolve(__dirname, './engine/utils/voxel_dda.js'),
+			'@utils/faces': path.resolve(__dirname, './engine/utils/faces.js'),
+			'@utils/memory_management': path.resolve(__dirname, './engine/utils/memory_management.js'),
+			'@utils/bit_packer': path.resolve(__dirname, './engine/utils/bit_packer.js'),
 
 			// Block model files
 			'@block-model/blocks': path.resolve(__dirname, './engine/block_model/blocks.js'),
