@@ -1,37 +1,37 @@
 {
   "compilerOptions": {
-    "checkJs": true,
-    "allowJs": true,
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "esModuleInterop": true,
+    "strict": true,
     "noEmit": true,
-    "maxNodeModuleJsDepth": 0,
     "baseUrl": ".",
     "typeRoots": ["./types", "./node_modules/@types"],
-	"target": "ES2023",
-    "lib": ["ES2023", "DOM"],
-
     "paths": {
       "@engine/*": ["./engine/*"],
       "@utils/*": ["./engine/utils/*"],
       "@resources/*": ["./resources/*"],
-      "@web-components/*": ["./web_components/*"],
+      "@web_components/*": ["./web_components/*"],
       "@examples/*": ["./examples/*"],
       "@chunk/*": ["./engine/chunk/*"],
-      
-      // Engine subsystems
       "@voxel/*": ["./engine/chunk/*"],
       "@block/*": ["./engine/block/*"],
       "@player/*": ["./engine/player/*"],
       "@world/*": ["./engine/world/*"],
+      "@bitpacker": ["../web-components/core/bitpacker/index"]
     }
   },
   "include": [
-    "engine/**/*.js",
-    "web_components/**/*.js",
+    "engine/**/*.ts",
+    "web_components/**/*.ts",
     "types/**/*.d.ts"
   ],
   "exclude": [
     "node_modules",
     "archive",
+    "legacy",
     "**/*.min.js"
   ]
 }
