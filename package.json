@@ -1,0 +1,23 @@
+{
+  "name": "webcraft-webgpu",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "stats.js": "^0.17.0",
+    "three": "^0.179.1",
+    "web-components": "file:../web-components"
+  },
+  "devDependencies": {
+    "@types/three": "^0.180.0",
+    "@webgpu/types": "^0.1.65",
+    "typescript": "^5.9.3",
+    "vite": "^7.0.4"
+  }
+}
