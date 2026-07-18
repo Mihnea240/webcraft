@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>WebCraft TS Demo</title>
+	<style>
+		body, html {
+			margin: 0;
+			padding: 0;
+			width: 100%;
+			height: 100%;
+			box-sizing: border-box;
+			overflow: hidden;
+			background-color: #111;
+			color: #fff;
+			font-family: sans-serif;
+		}
+
+		webcraft-context, webcraft-world, webcraft-player {
+			display: block;	
+			width: 100%;
+			height: 100%;
+		}
+
+		.info {
+			position: absolute;
+			top: 10px;
+			left: 10px;
+			z-index: 100;
+			background: rgba(0,0,0,0.7);
+			padding: 8px 12px;
+			border-radius: 4px;
+			pointer-events: none;
+		}
+
+		.crosshair-cross {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			width: 16px;
+			height: 16px;
+			transform: translate(-50%, -50%);
+			image-rendering: pixelated;
+
+			&::before, &::after {
+				content: '';
+				position: absolute;
+				background-color: rgba(255, 255, 255, 0.8);
+			}
+
+			&::before {
+				top: 50%;
+				left: 0;
+				width: 100%;
+				height: 2px;
+				transform: translateY(-50%);
+			}
+
+			&::after {
+				top: 0;
+				left: 50%;
+				width: 2px;
+				height: 100%;
+				transform: translateX(-50%);
+			}
+		}
+	</style>
+</head>
+<body>
+	<div class="info">
+		<h3>WebCraft TS Demo</h3>
+		<p>Click on viewport to lock mouse controls. Use WASD + Space/Shift to fly.</p>
+	</div>
+	<webcraft-context>
+		<webcraft-world>
+			<webcraft-player>
+				<!-- Pixel-perfect CSS crosshair cross -->
+				<div slot="crosshair" class="crosshair-cross"></div>
+			</webcraft-player>
+		</webcraft-world>
+	</webcraft-context>
+	<script type="module" src="/demo/main.ts"></script>
+</body>
+</html>

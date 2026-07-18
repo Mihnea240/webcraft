@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "target": "ES2023",
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "target": "ESNext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "esModuleInterop": true,
@@ -20,8 +20,9 @@
       "@block/*": ["./engine/block/*"],
       "@player/*": ["./engine/player/*"],
       "@world/*": ["./engine/world/*"],
-      "@bitpacker": ["../web-components/core/bitpacker/index"]
-    }
+      "web-components": ["../web-components/core/decorators/index"]
+    },
+    "noImplicitAny": false
   },
   "include": [
     "engine/**/*.ts",
