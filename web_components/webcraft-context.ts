@@ -1,4 +1,4 @@
-import ResourceLoader from "@engine/resource-loader";
+import ResourceLoader from "@world/resource-loader";
 import { compose, event, shadowRoot, shadowStyle } from 'web-components';
 
 @compose("webcraft-context")

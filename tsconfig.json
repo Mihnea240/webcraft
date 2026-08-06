@@ -20,7 +20,8 @@
       "@block/*": ["./engine/block/*"],
       "@player/*": ["./engine/player/*"],
       "@world/*": ["./engine/world/*"],
-      "web-components": ["../web-components/core/decorators/index"]
+      "web-components": ["../web-components/core/decorators/index"],
+      "web-components/*": ["../web-components/core/*"]
     },
     "noImplicitAny": false
   },
