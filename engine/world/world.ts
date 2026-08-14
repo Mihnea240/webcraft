@@ -8,10 +8,10 @@ import * as THREE from "three/webgpu";
 export default class World {
 	playerRegistry = new PlayerRegistry();
 	sceneManager = new SceneManager();
-	public resourceRegistry!: ResourceRegistry;
+	public resourceRegistry!: ResourceRegistry<any>;
 	private lastTime = 0;
 
-	setResourceRegistry(resourceRegistry: ResourceRegistry) {
+	setResourceRegistry(resourceRegistry: ResourceRegistry<any>) {
 		this.resourceRegistry = resourceRegistry;
 		this.init();
 	}

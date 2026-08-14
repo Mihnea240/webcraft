@@ -32,7 +32,7 @@ export default class WebcraftWorld extends HTMLElement {
 			bubbles: true,
 			composed: true,
 			detail: {
-				callback: (resourceRegistry: ResourceRegistry) => {
+				callback: (resourceRegistry: ResourceRegistry<any>) => {
 					this.world.setResourceRegistry(resourceRegistry);
 				}
 			}
