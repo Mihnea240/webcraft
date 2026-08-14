@@ -10,14 +10,18 @@
   },
   "dependencies": {
     "bitpacker": "file:../bitpacker",
+    "fflate": "^0.8.3",
+    "jpeg-js": "^0.4.4",
     "jszip": "^3.10.1",
     "molang": "^2.0.1",
     "stats.js": "^0.17.0",
     "three": "^0.185.1",
+    "upng-js": "^2.1.0",
     "web-components": "file:../web-components"
   },
   "devDependencies": {
     "@types/three": "^0.185.1",
+    "@types/upng-js": "^2.1.5",
     "@webgpu/types": "^0.1.65",
     "typescript": "^5.9.3",
     "vite": "^7.0.4"
