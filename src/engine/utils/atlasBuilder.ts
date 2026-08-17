@@ -75,7 +75,7 @@ export class AtlasBuilder {
             this.copyRowToAtlas(firstRow, width, left, top - i - 1);
 
             // Bottom padding
-            this.copyRowToAtlas(firstRow, width, left, top + height + i);
+            this.copyRowToAtlas(lastRow, width, left, top + height + i);
 
             // Left padding
             for (let y = 0; y < height; y++) {
@@ -120,7 +120,10 @@ export class AtlasBuilder {
         return true;
     }
 
+    // Get the next available position in the atlas for an image of given width and height in pixels, considering the padding and unit size. Returns undefined if no position is available.
     getNextAvailablePosition(width: number, height: number) {
+        width = Math.ceil((width + 2 * this.padding) / this.unitSize);
+        height = Math.ceil((height + 2 * this.padding) / this.unitSize);
         
         let { x, y } = this.pointer;
         while (x < this.occupancy.x && y < this.occupancy.y) {
@@ -144,12 +147,11 @@ export class AtlasBuilder {
         }
     }
 
-    addImage(src: Uint8Array, srcWidth: number, srcHeight: number) {
-        const width = Math.ceil((srcWidth + 2 * this.padding) / this.unitSize);
-        const height = Math.ceil((srcHeight + 2 * this.padding) / this.unitSize);
-
-        const position = this.getNextAvailablePosition(width, height);
-        if (!position) return;
+    addImage(src: Uint8Array, srcWidth: number, srcHeight: number, position?: { x: number, y: number }) {
+        position ??= this.getNextAvailablePosition(srcWidth, srcHeight);
+        if (!position) { 
+            throw new Error("Could not find available position in atlas for image of size " + srcWidth + "x" + srcHeight);
+        }
 
         const atlasX = position.x * this.unitSize;
         const atlasY = position.y * this.unitSize;
@@ -160,7 +162,10 @@ export class AtlasBuilder {
         this.copyToAtlas(src, srcWidth, srcHeight, imageX, imageY);
         this.paddImage(imageX, imageY, srcWidth, srcHeight);
 
-        this.setOccupied(position.x, position.y, width, height);
+        const filledWidth = Math.ceil((srcWidth + 2 * this.padding) / this.unitSize);
+        const filledHeight = Math.ceil((srcHeight + 2 * this.padding) / this.unitSize);
+        
+        this.setOccupied(position.x, position.y, filledWidth, filledHeight);
 
         return position;
     }

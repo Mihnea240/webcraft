@@ -4,13 +4,13 @@
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "baseUrl": ".",
     "esModuleInterop": true,
     "strict": true,
     "noEmit": true,
     "types": ["node"],
     "typeRoots": ["./src/bedrock-types", "./node_modules/@types"],
     "paths": {
+      "*": ["./*"],
       "@engine/*": ["./src/engine/*"],
       "@utils/*": ["./src/engine/utils/*"],
       "@web_components/*": ["./src/web_components/*"],
@@ -25,8 +25,7 @@
     "noImplicitAny": false
   },
   "include": [
-    "src/engine/**/*.ts",
-    "src/web_components/**/*.ts",
+    "src/**/*.ts",
     "demo/**/*.ts",
     "src/bedrock-types/**/*.d.ts"
   ],

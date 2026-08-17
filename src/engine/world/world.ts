@@ -1,4 +1,4 @@
-import { ResourceRegistry } from "@engine/resource_manager/resourceRegistry";
+import { ResourceRegistry } from "src/engine/resource_manager/registry/resourceRegistry";
 import { PlayerRegistry } from "./playerRegistry";
 import { SceneManager } from "./sceneManager";
 

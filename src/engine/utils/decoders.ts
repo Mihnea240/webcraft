@@ -57,7 +57,7 @@ export async function extractFromPngFile(file: UnzipFile) {
     return {
         width: image.width,
         height: image.height,
-        data: rgbaData
+        data: new Uint8Array(rgbaData)
     };
 }
 
@@ -67,9 +67,9 @@ export async function extractFromTgaFile(file: UnzipFile) {
     const imageData = loader.parse(buffer);
 
     return {
-        width: imageData.width,
-        height: imageData.height,
-        data: imageData.data
+        width: imageData.width!,
+        height: imageData.height!,
+        data: imageData.data as Uint8Array
     };
 }
 
@@ -80,7 +80,7 @@ export async function extractFromJpegFile(file: UnzipFile) {
     return {
         width: imageData.width,
         height: imageData.height,
-        data: imageData.data
+        data: imageData.data as Uint8Array
     };
 }
 

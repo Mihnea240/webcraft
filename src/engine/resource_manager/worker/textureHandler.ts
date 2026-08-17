@@ -1,40 +1,39 @@
-import { AtlasBuilder } from "@engine/utils/atlasBuilder";
-import { extractFromImageFile, extractHeaders, fileToJson } from "@engine/utils/decoders";
-import { BlockTextureRegistry } from "../blockTextureRegistry";
-import type { ResourcePack } from "../RP";
-import { WorkerRequest } from "./workerDataProtocol";
-
+import { TextureMapper } from "../textureMapper";
+import { WorkerEventType, WorkerRequest, WorkerResponse } from "./workerDataProtocol";
+import { packRegistries } from "./payloadPacker";
 
 self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
-
-}
-
-async function parseTerrainTexture(data: WorkerRequest) {
-    const { zipBuffer, textureRegistry: textureRegistryData, atlasBuffer} = data;
-    const { buffer, offset } = textureRegistryData;
+    const request = event.data;
     
-    //Extract the file contents
-    const headers = extractHeaders(zipBuffer);
-    const terrainTextureFile = headers.get("textures/terrain_texture.json")!;
-    const terrainTextureJson = await fileToJson(terrainTextureFile);
-    
-    const textureRegistry = new BlockTextureRegistry(buffer, {} as ResourcePack, { length: offset });
+    if (request.type === WorkerEventType.PARSE_RESOURCE_PACK) {
+        try {
+            // Instantiate the mapper, which automatically imports the registries from request
+            const mapper = new TextureMapper(request);
+            
+            // Run the parsing pipeline
+            await mapper.parse();
 
-    const colorAtlasBuilder = new AtlasBuilder(new Uint8Array(atlasBuffer), 4096, 4096, 16, 8);
-    // const mersAtlasBuilder = new AtlasBuilder(new Uint8Array(atlasBuffer), 4096, 4096, 16, 8);
-    
-    const textureData = terrainTextureJson.texture_data;
-    for (const tileName in textureData) {
-        const tileData = textureData[tileName];
+            // Export metadata and checkout buffers
+            const registries = {
+                blockTextures: mapper.blockTextureRegistry,
+                atlasTiles: mapper.atlasTileRegistry,
+                atlasLayers: mapper.atlasRegistry
+            };
 
-        const textures = tileData.textures;
-        
-        if (typeof textures === "string") {
-            const view = textureRegistry.getByName(textures);
-            if (view) continue;
+            const payload = packRegistries(registries);
 
-            const newView = textureRegistry.getNextView();
-            const imageData = await extractFromImageFile(headers.get(textures));
+            const response: WorkerResponse = {
+                type: WorkerEventType.RESOURCE_PACK_PARSED,
+                metadata: payload.metadata,
+                bufferCounts: payload.bufferCounts,
+                buffers: payload.buffers
+            };
+
+            // Transfer the buffers back to the main thread
+            self.postMessage(response, payload.buffers);
+        } catch (error) {
+            console.error("Worker texture extraction failed:", error);
+            throw error;
         }
     }
-}
+};

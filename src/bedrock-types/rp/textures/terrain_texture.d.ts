@@ -76,10 +76,12 @@ export interface Texture2 {
 }
 /**
  * The color to apply to the texture.
+ * MODIFED
  */
-export interface OverlayColor {
-  [k: string]: unknown;
-}
+// export interface OverlayColor {
+//   [k: string]: unknown;
+// }
+export type OverlayColor = string;
 /**
  * One of the variations, specified along with a possible weight.
  */
