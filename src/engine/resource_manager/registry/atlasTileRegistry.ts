@@ -12,11 +12,12 @@ export class AtlasTileRegistry extends ResourceRegistry<Uint16Array, any> {
         if (parent) {
             this.variationStorage = parent.variationStorage;
             this.variationWritePointer = parent.variationWritePointer;
+        } else {
+            this.variationStorage = new VariableBufferStorageUnit<Uint16Array, any>(Uint16Array, 1024, false);
         }
     }
 
     createStorageUnit(): VariableBufferStorageUnit<Uint16Array, any> {
-        this.variationStorage = new VariableBufferStorageUnit<Uint16Array, any>(Uint16Array, 1024, false);
         return new VariableBufferStorageUnit<Uint16Array, any>(Uint16Array, 4096, false);
     }
 

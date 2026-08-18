@@ -3,6 +3,15 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
 	plugins: [tsconfigPaths()],
+	resolve: {
+		dedupe: ['three'] // Force a single instance of Three.js
+	},
+	optimizeDeps: {
+		entries: [
+			'demo/index.html',
+			'tests/index.html'
+		]
+	},
 	esbuild: {
 		target: 'esnext',
 		supported: {

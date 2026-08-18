@@ -1,11 +1,9 @@
-import { TextureStruct } from "@engine/packing_schemas/texture";
 import { AtlasBuilder } from "@engine/utils/atlasBuilder";
-import { extractFromImageFile, extractHeaders, fileToJson } from "@engine/utils/decoders";
-import { UnzipFile } from "fflate";
-import { ArrayStorageUnit, BufferStorageUnit } from "./memory_management";
-import { AtlasLayer, AtlasRegistry, AtlasTileRegistry, BlockTextureMetadata, BlockTextureRegistry } from "./registry";
-import { ATLAS_SIZE } from "./RP";
-import { WorkerRequest } from "./worker/workerDataProtocol";
+import { extractFromImageFile, extractHeaders, fileToJson, ZipFileEntry } from "@engine/utils/decoders";
+import { AtlasRegistry, AtlasTileRegistry, BlockTextureRegistry } from "../registry";
+import { WorkerRequest } from "../worker/workerDataProtocol";
+
+import * as Constants from "../constants";
 
 import { colorFromHex, imageWithOverlay, imageWithTint } from "src/engine/utils/imageManipulations";
 
@@ -43,7 +41,7 @@ function createFallbackImageData(): Uint8Array {
 
 export class TextureMapper {
 
-    headers: Map<string, UnzipFile>;
+    headers: Map<string, ZipFileEntry>;
     terrainTextureJson!: TerrainTextureFile;
     flipbookTextureJson!: FlipbookTextureFile;
 
@@ -86,9 +84,9 @@ export class TextureMapper {
         this.initAtlasBuilders(this.atlasRegistry.atlasBuffer, 8);
     }
 
-    initAtlasBuilders(atlasBuffer: ArrayBuffer, padding: number) {
+    initAtlasBuilders(atlasBuffer: ArrayBuffer, padding: number) { 
         this.colorAtlasBuilder = new AtlasBuilder(new Uint8Array(atlasBuffer), 4096, 4096, 16, padding);
-        this.mersAtlasBuilder = new AtlasBuilder(new Uint8Array(atlasBuffer, ATLAS_SIZE), 4096, 4096, 16, padding);
+        this.mersAtlasBuilder = new AtlasBuilder(new Uint8Array(atlasBuffer, Constants.INITIAL_ATLAS_SIZE), 4096, 4096, 16, padding);
     }
 
     async initFallbackTexture() {
@@ -112,11 +110,11 @@ export class TextureMapper {
 
         //Extract terrain texture json
         const terrainTextureFile = this.headers.get("textures/terrain_texture.json")!;
-        const terrainTextureJson = this.terrainTextureJson = await fileToJson(terrainTextureFile);
+        const terrainTextureJson = this.terrainTextureJson = await fileToJson(this.workerRequest.zipBuffer, terrainTextureFile);
 
         //Extract flipbook texture json
-        const flipbookTextureFile = this.headers.get("textures/flipbook_texture.json")!;
-        this.flipbookTextureJson = await fileToJson(flipbookTextureFile);
+        const flipbookTextureFile = this.headers.get("textures/flipbook_textures.json")!;
+        this.flipbookTextureJson = await fileToJson(this.workerRequest.zipBuffer, flipbookTextureFile);
 
         await this.addFlipbookTiles();
         await this.addTerrainTiles();
@@ -230,7 +228,7 @@ export class TextureMapper {
             return;
         }
 
-        const textureId = await this.addTileAtIndex(terrainTextureEntry, atlas_tile_variant, atlas_index);
+        const textureId = await this.addTileAtIndex(terrainTextureEntry, atlas_index, atlas_tile_variant);
         const view = this.blockTextureRegistry.get(textureId!)!;
         const position = {
             x: view.atlas_u,
@@ -352,7 +350,7 @@ export class TextureMapper {
     async extractTextureFile(path: string): Promise<TextureSetResult> {
         const textureSet = this.searchForTextureSet(path);
         if (textureSet) {
-            const textureSetJson = await fileToJson(textureSet) as BlockceptionMinecraftResourceTextureTextureSet;
+            const textureSetJson = await fileToJson(this.workerRequest.zipBuffer, textureSet) as BlockceptionMinecraftResourceTextureTextureSet;
             const { color, metalness_emissive_roughness_subsurface } = textureSetJson["minecraft:texture_set"];
 
             const colorTexture = this.searchForTexture(color as FileName);
@@ -363,15 +361,15 @@ export class TextureMapper {
             }
 
             return {
-                colorTexture: await extractFromImageFile(colorTexture),
-                mersTexture: mersTexture ? await extractFromImageFile(mersTexture) : undefined
+                colorTexture: await extractFromImageFile(this.workerRequest.zipBuffer, colorTexture),
+                mersTexture: mersTexture ? await extractFromImageFile(this.workerRequest.zipBuffer, mersTexture) : undefined
             } as TextureSetResult;
         }
 
         const texture = this.searchForTexture(path);
         if (texture) {
             return {
-                colorTexture: await extractFromImageFile(texture),
+                colorTexture: await extractFromImageFile(this.workerRequest.zipBuffer, texture),
             } as TextureSetResult;
         }
 
@@ -410,11 +408,10 @@ export class TextureMapper {
 
             const frameSize = width * width * 4; // Assuming RGBA format
             let framePosition = { x: position.x, y: position.y };
-            let frameOffset = 0;
 
             for (const frameIndex of config.frames) {
+                const frameOffset = frameIndex * frameSize;
                 const frameData = new Uint8Array(data.buffer, data.byteOffset + frameOffset, frameSize);
-                frameOffset += frameSize;
 
                 atlas.addImage(frameData, width, width, framePosition);
                 framePosition.y++; // Move to the next row for the next frame

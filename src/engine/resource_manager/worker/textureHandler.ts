@@ -1,4 +1,4 @@
-import { TextureMapper } from "../textureMapper";
+import { TextureMapper } from "../parsers/textureMapper";
 import { WorkerEventType, WorkerRequest, WorkerResponse } from "./workerDataProtocol";
 import { packRegistries } from "./payloadPacker";
 

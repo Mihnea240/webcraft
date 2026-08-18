@@ -59,6 +59,27 @@ export abstract class ResourceRegistry<ElementType, MetaType> {
         return localName !== undefined ? localName : this.parent?.idToName(id);
     }
 
+    // --- Linked List Node Operations ---
+
+    /**
+     * Removes/bypasses a specific registry node from the parent lookup chain.
+     */
+    public removeNode(node: ResourceRegistry<ElementType, MetaType>): void {
+        if (this === node) {
+            // Cannot remove ourselves directly from within ourselves
+            return;
+        }
+
+        let current: ResourceRegistry<ElementType, MetaType> | undefined = this;
+        while (current) {
+            if (current.parent === node) {
+                current.parent = node.parent; // Bypass the deleted node
+                return;
+            }
+            current = current.parent;
+        }
+    }
+
     // --- Export / Import Protocol (Excluding Binary Buffers) ---
 
     public exportMetadata() {

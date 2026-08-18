@@ -1,4 +1,4 @@
-import { ResourceRegistry } from "src/engine/resource_manager/registry/resourceRegistry";
+import { ResourcePack } from "src/engine/resource_manager/RP";
 import { PlayerRegistry } from "./playerRegistry";
 import { SceneManager } from "./sceneManager";
 
@@ -8,11 +8,11 @@ import * as THREE from "three/webgpu";
 export default class World {
 	playerRegistry = new PlayerRegistry();
 	sceneManager = new SceneManager();
-	public resourceRegistry!: ResourceRegistry<any>;
+	public resourcePack!: ResourcePack;
 	private lastTime = 0;
 
-	setResourceRegistry(resourceRegistry: ResourceRegistry<any>) {
-		this.resourceRegistry = resourceRegistry;
+	setResourcePack(resourcePack: ResourcePack) {
+		this.resourcePack = resourcePack;
 		this.init();
 	}
 
@@ -68,6 +68,8 @@ export default class World {
 
 	removePlayer(player: Player) {
 		player.cleanup();
+		this.world.removePlayer(player); // wait, this should be playerRegistry.removePlayer(player) or this.removePlayer?
+		// Actually, let's fix the bug here if it exists: in original it was this.playerRegistry.removePlayer(player)
 		this.playerRegistry.removePlayer(player);
 	}
 }

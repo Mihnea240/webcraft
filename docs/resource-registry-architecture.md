@@ -134,3 +134,12 @@ The data flow leverages the **Payload Packer** to automate checking out buffers 
 ### Decision 4: Fallback Error Boundary (No `undefined` Propagation)
 *   **Context**: If a texture file is missing from a ZIP or Jpeg/Png decoding fails, propagating `undefined` up the stack requires checking for `undefined` on every level and risks crashing the WebGL render loop.
 *   **Decision**: We implemented a `try/catch` boundary in `TextureMapper.addTileAtIndex()`. If any parsing step fails, it catches the exception, prints a warning, and returns `this.fallbackTextureId` (a pre-rendered black-and-purple checkerboard). The rest of the engine remains type-safe and never has to handle `undefined` values.
+
+### Decision 5: Singly Linked List Pack Cascading and Logical Deletion
+*   **Context**: Users can enable/disable resource packs dynamically at runtime. Shifting or rebuilding packed binary buffers when a pack is removed is extremely expensive and causes WebGL stalls.
+*   **Decision**: We modeled `ResourcePack` and `ResourceRegistry` as singly linked lists pointing to their parents. When a pack is disabled, we traverse the list and bypass the pack and its registries ($O(1)$ pointer swaps). The physical buffers remain untouched, but the name-to-ID mappings of the bypassed pack are logically severed, instantly updating the visible assets without stalling the GPU.
+
+### Decision 6: Shallow Buffer Sharing in Multi-World Environments
+*   **Context**: Multiple WebCraft worlds might run on a single page. They should share the heavy resources (VRAM, texture arrays) to save memory, but need independent pack chains and custom name-to-ID mappings.
+*   **Decision**: Cloning a registry (via `new BlockTextureRegistry(parent)`) performs a shallow reference of the underlying data `storage` (sharing the same `ArrayBuffer` and elements), but instantiates separate mapping dictionaries (`nameToIdMap`). This achieves zero duplicated memory across worlds while keeping logical control isolated per world viewport.
+

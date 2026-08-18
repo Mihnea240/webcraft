@@ -19,7 +19,7 @@ export class AtlasBuilder {
         const slotsWidth = Math.floor(width / (this.unitSize + this.padding * 2));
         const slotsHeight = Math.floor(height / (this.unitSize + this.padding * 2));
 
-        this.occupancy = new Array3D<Uint8Array>(slotsWidth, slotsHeight, 1);
+        this.occupancy = new Array3D<Uint8Array>(slotsWidth, slotsHeight, 1).allocateBuffer(Uint8Array);
         this.occupancy.fill(0);
     }
  

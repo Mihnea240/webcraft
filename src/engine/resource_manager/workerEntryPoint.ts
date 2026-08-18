@@ -1,84 +1,91 @@
-import { ResourceRegistry } from "./registry/resourceRegistry";
 import { WorkerEventType } from "./worker/workerDataProtocol";
 import { packRegistries, unpackRegistries, PackedRegistryPayload } from "./worker/payloadPacker";
 
 export class WorkerEntryPoint {
-    private worker: Worker | null = null;
+    private static instance: WorkerEntryPoint | null = null;
+    private worker!: Worker;
+    private activePromise: Promise<any> | null = null; // The transaction lock
 
-    constructor() {}
-
-    /**
-     * Spawns or retrieves the active Web Worker
-     */
-    private getWorker(): Worker {
-        this.worker ??= new Worker(
-            new URL("./worker/textureHandler.ts", import.meta.url),
-            { type: "module" }
-        );
-        return this.worker;
+    private constructor() {
+        this.initWorker();
     }
 
     /**
-     * Extracts buffers and metadata from a dictionary of registries.
+     * Retrieves the single persistent WorkerEntryPoint instance
      */
-    public preparePayload(registries: Record<string, ResourceRegistry<any, any>>): PackedRegistryPayload {
+    public static getInstance(): WorkerEntryPoint {
+        if (!this.instance) {
+            this.instance = new WorkerEntryPoint();
+        }
+        return this.instance;
+    }
+
+    /**
+     * Initializes the background Web Worker once
+     */
+    private initWorker() {
+        this.worker = new Worker(
+            new URL("./worker/textureHandler.ts", import.meta.url),
+            { type: "module" }
+        );
+    }
+
+    /**
+     * Prepares and checks out transferable buffers from a registry dictionary
+     */
+    public preparePayload(registries: Record<string, any>): PackedRegistryPayload {
         return packRegistries(registries);
     }
 
     /**
-     * Binds returned buffers and metadata back into a dictionary of registries.
+     * Binds returned buffers and metadata back into a registry dictionary
      */
     public interpretPayload(
-        registries: Record<string, ResourceRegistry<any, any>>,
+        registries: Record<string, any>,
         payload: PackedRegistryPayload
     ): void {
         unpackRegistries(registries, payload);
     }
 
     /**
-     * Sends a specific workload request to the worker and waits for completion.
+     * Dispatches a parsing workload to the persistent background worker.
+     * If a transaction is already running, it queues and awaits it sequentially.
      */
     public async executeWorkload(
         payload: PackedRegistryPayload,
         zipBuffer: ArrayBuffer,
         eventType: WorkerEventType
     ): Promise<PackedRegistryPayload> {
-        const worker = this.getWorker();
+        // Queue/lock sequential access to the worker to protect transferable buffer ownership
+        while (this.activePromise) {
+            await this.activePromise;
+        }
 
-        const request = {
-            type: eventType,
-            zipBuffer,
-            metadata: payload.metadata,
-            bufferCounts: payload.bufferCounts,
-            buffers: payload.buffers
-        };
-
-        const transferables: Transferable[] = [zipBuffer, ...payload.buffers];
-        worker.postMessage(request, transferables);
-
-        return new Promise((resolve, reject) => {
-            worker.onmessage = (event: MessageEvent<any>) => {
-                const response = event.data;
-                resolve({
-                    metadata: response.metadata,
-                    bufferCounts: response.bufferCounts,
-                    buffers: response.buffers
-                });
+        const promise = new Promise<PackedRegistryPayload>((resolve, reject) => {
+            const request = {
+                type: eventType,
+                zipBuffer,
+                metadata: payload.metadata,
+                bufferCounts: payload.bufferCounts,
+                buffers: payload.buffers
             };
 
-            worker.onerror = (error) => {
+            const transferables: Transferable[] = [zipBuffer, ...payload.buffers];
+            this.worker.postMessage(request, transferables);
+
+            this.worker.onmessage = (event: MessageEvent<any>) => {
+                this.activePromise = null; // Release the lock
+                resolve(event.data);
+            };
+
+            this.worker.onerror = (error) => {
+                this.activePromise = null; // Release the lock on failure
                 reject(error);
             };
         });
-    }
 
-    /**
-     * Cleans up the worker instance
-     */
-    public terminate(): void {
-        if (this.worker) {
-            this.worker.terminate();
-            this.worker = null;
-        }
+        // Set the active transaction lock
+        this.activePromise = promise;
+        return promise;
     }
 }

@@ -1,11 +1,10 @@
-import { extractHeaders, fileToJson } from '@engine/utils/decoders';
-import { UnzipFile } from 'fflate';
+import { extractHeaders, fileToJson, ZipFileEntry } from '@engine/utils/decoders';
 import { AtlasTileRegistry } from './registry/atlasTileRegistry';
 import { BlockTextureRegistry } from "./registry/blockTextureRegistry";
-
-export const INITIAL_TEXTURE_DESCRIPTOR_BUFFER_SIZE = 4096 * 2 //4096 descriptors, 2 bytes each
-export const ATLAS_SIZE = (4096 ** 2) * 4; // 4096x4096 RGBA texture
-export const INITIAL_ATLAS_COUNT = 2 //one for color and the next for mers 
+import { AtlasRegistry } from './registry/atlasRegistry';
+import { ResourceRegistry } from './registry/resourceRegistry';
+import { WorkerEntryPoint } from './workerEntryPoint';
+import { WorkerEventType } from './worker/workerDataProtocol';
 
 export interface ResourcePackData {
     name: string;
@@ -14,28 +13,74 @@ export interface ResourcePackData {
 }
 
 export class ResourcePack {
-    private fileMap: Map<string, UnzipFile> = new Map();
+    private fileMap: Map<string, ZipFileEntry> = new Map();
+    private zipBuffer!: ArrayBuffer;
+    
+    public parent?: ResourcePack;
     public metadata!: ResourcePackData;
 
-    public atlasBuffer!: ArrayBuffer;
-    public blockTextureRegistry!: BlockTextureRegistry;
-    public atlasTileRegistry!: AtlasTileRegistry;
+    // Store registries keyed by their Class Constructor type
+    public readonly registries = new Map<new (parent?: any) => ResourceRegistry<any, any>, ResourceRegistry<any, any>>();
 
-    constructor(public packUrl: string) {
+    constructor(public packUrl: string) {}
+
+    /**
+     * Retrieve a registry dynamically by its class type.
+     * Fully type-safe and autocompleted at compile time.
+     */
+    public get<T extends ResourceRegistry<any, any>>(ctor: new (parent?: any) => T): T {
+        const registry = this.registries.get(ctor);
+        if (!registry) {
+            throw new Error(`Registry "${ctor.name}" not found in pack`);
+        }
+        return registry as T;
     }
 
     default() {
-        this.blockTextureRegistry = new BlockTextureRegistry();
-        this.atlasTileRegistry = new AtlasTileRegistry();
-        this.atlasBuffer = atlasBuffer;
+        this.registries.set(BlockTextureRegistry, new BlockTextureRegistry());
+        this.registries.set(AtlasTileRegistry, new AtlasTileRegistry());
+        this.registries.set(AtlasRegistry, new AtlasRegistry());
     }
 
     linkedClone(newUrl: string): ResourcePack {
         const clone = new ResourcePack(newUrl);
         clone.parent = this;
-        clone.blockTextureRegistry = this.blockTextureRegistry.linkedClone(clone);
-        clone.atlasTileRegistry = this.atlasTileRegistry.linkedClone(clone);
+
+        // Clone each registry using its constructor type dynamically
+        for (const [Ctor, registry] of this.registries.entries()) {
+            clone.registries.set(Ctor, new Ctor(registry));
+        }
+
         return clone;
+    }
+
+    /**
+     * Logically removes a pack from the active cascading chain.
+     * Returns the new head of the active ResourcePack chain.
+     */
+    public removePack(packToRemove: ResourcePack): ResourcePack {
+        if (this === packToRemove) {
+            return this.parent!;
+        }
+
+        let current: ResourcePack | undefined = this;
+        while (current) {
+            if (current.parent === packToRemove) {
+                current.parent = packToRemove.parent;
+
+                // Loop through constructors to bypass registry parents
+                for (const [Ctor, registry] of current.registries.entries()) {
+                    const targetRegistry = packToRemove.registries.get(Ctor);
+                    if (targetRegistry) {
+                        registry.removeNode(targetRegistry);
+                    }
+                }
+                break;
+            }
+            current = current.parent;
+        }
+
+        return this; // We remain the head of the chain
     }
 
     async load() {
@@ -44,12 +89,12 @@ export class ResourcePack {
             throw new Error(`Failed to fetch resource pack from ${this.packUrl}: ${response.statusText}`);
         }
 
-        const arrayBuffer = await response.arrayBuffer();
-        const filemap = this.fileMap = extractHeaders(arrayBuffer);
+        this.zipBuffer = await response.arrayBuffer();
+        this.fileMap = extractHeaders(this.zipBuffer);
 
-        const mainThreadParsingFiles = [
-            filemap.get('manifest.json'),
-        ];
+        await this.extractMetadata();
+        await this.parseBlockDefinitions();
+        await this.parseTerrainTextures();
     }
 
     private async extractMetadata() {
@@ -58,8 +103,12 @@ export class ResourcePack {
             throw new Error("Resource pack is missing manifest.json");
         }
 
-        const manifestJson = await fileToJson(manifestFile);
-        // Right data object and other bits
+        const manifestJson = await fileToJson(this.zipBuffer, manifestFile);
+        this.metadata = {
+            name: manifestJson.header?.name ?? "Unnamed Pack",
+            version: manifestJson.header?.version?.join('.') ?? "0.0.0",
+            description: manifestJson.header?.description ?? ""
+        };
     }
 
     private async parseBlockDefinitions() {
@@ -67,6 +116,28 @@ export class ResourcePack {
     }
 
     private async parseTerrainTextures() {
-        
+        const file = this.fileMap.get("textures/terrain_texture.json");
+        if (!file) {
+            return;
+        }
+
+        const entryPoint = WorkerEntryPoint.getInstance();
+
+        // Map constructors to the string keys expected by the worker protocol
+        const registries = {
+            blockTextures: this.get(BlockTextureRegistry),
+            atlasTiles: this.get(AtlasTileRegistry),
+            atlasLayers: this.get(AtlasRegistry)
+        };
+
+        const payload = entryPoint.preparePayload(registries);
+
+        const result = await entryPoint.executeWorkload(
+            payload,
+            this.zipBuffer,
+            WorkerEventType.PARSE_RESOURCE_PACK
+        );
+
+        entryPoint.interpretPayload(registries, result);
     }
 }

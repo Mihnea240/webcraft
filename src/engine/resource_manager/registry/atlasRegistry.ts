@@ -16,11 +16,12 @@ export class AtlasRegistry extends ResourceRegistry<AtlasLayer, any> {
         super(parent);
         if (parent) {
             this.atlasBuffer = parent.atlasBuffer;
+        } else {
+            this.atlasBuffer = new ArrayBuffer(Constants.INITIAL_ATLAS_SIZE);
         }
     }
     
     createStorageUnit() {
-        this.atlasBuffer = new ArrayBuffer(Constants.INITIAL_ATLAS_SIZE);
         return new ArrayStorageUnit<AtlasLayer, any>();
     }
 

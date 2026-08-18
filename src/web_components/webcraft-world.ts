@@ -1,4 +1,4 @@
-import { ResourceRegistry } from "src/engine/resource_manager/registry/resourceRegistry";
+import { ResourcePack } from "src/engine/resource_manager/RP";
 import World from "@world/world";
 import { compose, event, shadowRoot, shadowStyle } from 'web-components';
 
@@ -26,19 +26,16 @@ export default class WebcraftWorld extends HTMLElement {
 		this.registerPlayer(player);
 	}
 
-	connectedCallback() {
-		// Dispatch event to retrieve the resource loader context from parent webcraft-context
-		const event = new CustomEvent("request-context", {
-			bubbles: true,
-			composed: true,
-			detail: {
-				callback: (resourceRegistry: ResourceRegistry<any>) => {
-					this.world.setResourceRegistry(resourceRegistry);
-				}
-			}
-		});
+	set resourcePack(pack: ResourcePack) {
+		this.world.setResourcePack(pack);
+	}
 
-		this.dispatchEvent(event);
+	get resourcePack(): ResourcePack {
+		return this.world.resourcePack;
+	}
+
+	connectedCallback() {
+		// Connection-time setup (the parent app or controller binds the resourcePack directly)
 	}
 
 	private registerPlayer(player: any) {
