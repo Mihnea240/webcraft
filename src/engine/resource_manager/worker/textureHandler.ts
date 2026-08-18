@@ -11,7 +11,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
             const mapper = new TextureMapper(request);
             
             // Run the parsing pipeline
-            await mapper.parse();
+            mapper.parse();
 
             // Export metadata and checkout buffers
             const registries = {

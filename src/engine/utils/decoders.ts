@@ -1,3 +1,4 @@
+import { inflateSync } from "fflate";
 import decodeJpeg from "jpeg-js";
 import { TGALoader } from 'three/addons/loaders/TGALoader.js';
 import UPNG from "upng-js";
@@ -74,10 +75,10 @@ export function extractHeaders(buffer: ArrayBuffer): Map<string, ZipFileEntry> {
 }
 
 /**
- * Extracts a file from the raw zip buffer on-demand.
- * Pipes raw deflate bytes through browser-native DecompressionStream off-thread.
+ * Extracts a file from the raw zip buffer on-demand synchronously.
+ * Zero streams, zero microtask hops.
  */
-export async function extractFile(buffer: ArrayBuffer, entry: ZipFileEntry): Promise<ArrayBuffer> {
+export function extractFile(buffer: ArrayBuffer, entry: ZipFileEntry): ArrayBuffer {
     const view = new DataView(buffer);
     const u8 = new Uint8Array(buffer);
     const { localHeaderOffset, compressedSize, compressionMethod, name } = entry;
@@ -95,10 +96,8 @@ export async function extractFile(buffer: ArrayBuffer, entry: ZipFileEntry): Pro
     const compressedSlice = u8.subarray(dataOffset, dataOffset + compressedSize);
 
     if (compressionMethod === 8) {
-        // Native DEFLATE-RAW decompression (runs in browser engine C++)
-        const stream = new Response(compressedSlice).body!
-            .pipeThrough(new DecompressionStream("deflate-raw"));
-        return await new Response(stream).arrayBuffer();
+        // Fast, synchronous, zero-stream in-memory decompression using fflate
+        return inflateSync(compressedSlice).buffer;
     } else if (compressionMethod === 0) {
         // STORED (Uncompressed): Slice directly
         return compressedSlice.slice(0).buffer;
@@ -108,18 +107,19 @@ export async function extractFile(buffer: ArrayBuffer, entry: ZipFileEntry): Pro
 }
 
 export function stripJsonComments(jsonString: string): string {
+    // Matches string literals and escaped quotes to avoid stripping comments inside strings
     return jsonString.replace(/\\"|"(?:\\"|[^"])*"|(\/\/.*|\/\*[\s\S]*?\*\/)/g, (m, g) => g ? "" : m);
 }
 
-export async function fileToJson(buffer: ArrayBuffer, entry: ZipFileEntry): Promise<any> {
-    const fileBuffer = await extractFile(buffer, entry);
+export function fileToJson(buffer: ArrayBuffer, entry: ZipFileEntry): any {
+    const fileBuffer = extractFile(buffer, entry);
     const text = new TextDecoder("utf-8").decode(fileBuffer);
     const cleanText = stripJsonComments(text);
     return JSON.parse(cleanText);
 }
 
-export async function extractFromPngFile(buffer: ArrayBuffer, file: ZipFileEntry) {
-    const fileBuffer = await extractFile(buffer, file);
+export function extractFromPngFile(buffer: ArrayBuffer, file: ZipFileEntry) {
+    const fileBuffer = extractFile(buffer, file);
     const image = UPNG.decode(fileBuffer);
     const rgbaData = UPNG.toRGBA8(image)[0];
 
@@ -130,8 +130,8 @@ export async function extractFromPngFile(buffer: ArrayBuffer, file: ZipFileEntry
     };
 }
 
-export async function extractFromTgaFile(buffer: ArrayBuffer, file: ZipFileEntry) {
-    const fileBuffer = await extractFile(buffer, file);
+export function extractFromTgaFile(buffer: ArrayBuffer, file: ZipFileEntry) {
+    const fileBuffer = extractFile(buffer, file);
     const loader = new TGALoader();
     const imageData = loader.parse(fileBuffer);
 
@@ -142,8 +142,8 @@ export async function extractFromTgaFile(buffer: ArrayBuffer, file: ZipFileEntry
     };
 }
 
-export async function extractFromJpegFile(buffer: ArrayBuffer, file: ZipFileEntry) {
-    const fileBuffer = await extractFile(buffer, file);
+export function extractFromJpegFile(buffer: ArrayBuffer, file: ZipFileEntry) {
+    const fileBuffer = extractFile(buffer, file);
     const imageData = decodeJpeg.decode(fileBuffer, { useTArray: true });
 
     return {
@@ -153,13 +153,13 @@ export async function extractFromJpegFile(buffer: ArrayBuffer, file: ZipFileEntr
     };
 }
 
-export async function extractFromImageFile(buffer: ArrayBuffer, file: ZipFileEntry) {
+export function extractFromImageFile(buffer: ArrayBuffer, file: ZipFileEntry) {
     const extension = file.name.split('.').pop()?.toLowerCase();
     switch (extension) {
         case 'png':
             return extractFromPngFile(buffer, file);
-        case 'tga':
-            return extractFromTgaFile(buffer, file);
+            case 'tga':
+                return extractFromTgaFile(buffer, file);
         case 'jpg':
         case 'jpeg':
             return extractFromJpegFile(buffer, file);

@@ -89,7 +89,7 @@ export class TextureMapper {
         this.mersAtlasBuilder = new AtlasBuilder(new Uint8Array(atlasBuffer, Constants.INITIAL_ATLAS_SIZE), 4096, 4096, 16, padding);
     }
 
-    async initFallbackTexture() {
+    initFallbackTexture() {
         const data = createFallbackImageData();
         const tile = this.addTexture({ width: 16, height: 16, data }, { addToTextureRegistry: false });
         this.fallbackTextureId = this.blockTextureRegistry.push(".fallback", {
@@ -104,20 +104,20 @@ export class TextureMapper {
         });
     }
 
-    async parse() {
+    parse() {
         // Create fallback texture first
-        await this.initFallbackTexture();
+        this.initFallbackTexture();
 
         //Extract terrain texture json
         const terrainTextureFile = this.headers.get("textures/terrain_texture.json")!;
-        const terrainTextureJson = this.terrainTextureJson = await fileToJson(this.workerRequest.zipBuffer, terrainTextureFile);
+        const terrainTextureJson = this.terrainTextureJson = fileToJson(this.workerRequest.zipBuffer, terrainTextureFile);
 
         //Extract flipbook texture json
         const flipbookTextureFile = this.headers.get("textures/flipbook_textures.json")!;
-        this.flipbookTextureJson = await fileToJson(this.workerRequest.zipBuffer, flipbookTextureFile);
+        this.flipbookTextureJson = fileToJson(this.workerRequest.zipBuffer, flipbookTextureFile);
 
-        await this.addFlipbookTiles();
-        await this.addTerrainTiles();
+        this.addFlipbookTiles();
+        this.addTerrainTiles();
     }
 
     searchForTextureSet(path: string) {
@@ -149,19 +149,17 @@ export class TextureMapper {
 
         return undefined;
     }
-    //FIXME; handle the case where the flipbook texture doesnt fit in the atlas
-    // either because the atlas is full or because the texture was placed at an akward position
-    // It shouldnt happen often
 
-    async addFlipbookTiles() {
+    addFlipbookTiles() {
+        if (!this.flipbookTextureJson) return;
         for (const flipbookTexture of this.flipbookTextureJson) {
             this.addFlipbookEntry(flipbookTexture);
         }
     }
 
-    async addTerrainTiles() {
+    addTerrainTiles() {
         for (const [name, entry] of Object.entries(this.terrainTextureJson.texture_data!)) {
-            await this.addTerrainEntry(name, entry);
+            this.addTerrainEntry(name, entry);
         }
     }
 
@@ -187,12 +185,12 @@ export class TextureMapper {
         }
     }
 
-    async addTerrainEntry(name: string, entry: TextureData1) {
+    addTerrainEntry(name: string, entry: TextureData1) {
         const tileData: any[] = [];
         let lastVariant = -1, lastVariations: number[] | undefined = undefined;
 
         for (const { path, index, variant, weight } of this.normalizeTerrainTextureEntry(entry)) {
-            const textureId = await this.addTileAtIndex(entry, index, variant);
+            const textureId = this.addTileAtIndex(entry, index, variant);
 
             if (variant === undefined) {
                 tileData.push(textureId);
@@ -220,7 +218,7 @@ export class TextureMapper {
         this.atlasTileRegistry.pushWithVariation(name, tileData);
     }
 
-    async addFlipbookEntry({ flipbook_texture, atlas_tile, frames, blend_frames, atlas_index, atlas_tile_variant }: FlipbookTexture) {
+    addFlipbookEntry({ flipbook_texture, atlas_tile, frames, blend_frames, atlas_index, atlas_tile_variant }: FlipbookTexture) {
         const terrainTextureEntry = this.terrainTextureJson.texture_data![atlas_tile!];
 
         if (!terrainTextureEntry) {
@@ -228,7 +226,7 @@ export class TextureMapper {
             return;
         }
 
-        const textureId = await this.addTileAtIndex(terrainTextureEntry, atlas_index, atlas_tile_variant);
+        const textureId = this.addTileAtIndex(terrainTextureEntry, atlas_index, atlas_tile_variant);
         const view = this.blockTextureRegistry.get(textureId!)!;
         const position = {
             x: view.atlas_u,
@@ -239,20 +237,20 @@ export class TextureMapper {
         view.blend_frames = blend_frames ? 1 : 0;
 
         //Add the animation frames to the atlas downwards from the base tile position
-        const textures = await this.extractTextureFile(flipbook_texture!);
+        const textures = this.extractTextureFile(flipbook_texture!);
         if (!textures) {
             console.warn(`Flipbook texture not found for path: ${flipbook_texture}`);
             return;
         }
 
-        const tile = await this.stichTexture(textures, {
+        this.stichTexture(textures, {
             addToTextureRegistry: false,
             position,
             frames
         });
     }
 
-    async addTileAtIndex(textureDef: TextureData1, texture_index?: number, variant?: number): Promise<number> {
+    addTileAtIndex(textureDef: TextureData1, texture_index?: number, variant?: number): number {
         let path = "";
         try {
             let texture: Texture2 | undefined = undefined;
@@ -317,8 +315,8 @@ export class TextureMapper {
                 }
             }
 
-            const textures = await this.extractTextureFile(path);
-            const tile = await this.stichTexture(textures, config);
+            const textures = this.extractTextureFile(path);
+            const tile = this.stichTexture(textures, config);
             return this.blockTextureRegistry.push(flattenedName, {
                 atlas_u: tile.x,
                 atlas_v: tile.y,
@@ -347,10 +345,10 @@ export class TextureMapper {
         return flattenedName;
     }
 
-    async extractTextureFile(path: string): Promise<TextureSetResult> {
+    extractTextureFile(path: string): TextureSetResult {
         const textureSet = this.searchForTextureSet(path);
         if (textureSet) {
-            const textureSetJson = await fileToJson(this.workerRequest.zipBuffer, textureSet) as BlockceptionMinecraftResourceTextureTextureSet;
+            const textureSetJson = fileToJson(this.workerRequest.zipBuffer, textureSet) as BlockceptionMinecraftResourceTextureTextureSet;
             const { color, metalness_emissive_roughness_subsurface } = textureSetJson["minecraft:texture_set"];
 
             const colorTexture = this.searchForTexture(color as FileName);
@@ -361,22 +359,22 @@ export class TextureMapper {
             }
 
             return {
-                colorTexture: await extractFromImageFile(this.workerRequest.zipBuffer, colorTexture),
-                mersTexture: mersTexture ? await extractFromImageFile(this.workerRequest.zipBuffer, mersTexture) : undefined
+                colorTexture: extractFromImageFile(this.workerRequest.zipBuffer, colorTexture),
+                mersTexture: mersTexture ? extractFromImageFile(this.workerRequest.zipBuffer, mersTexture) : undefined
             } as TextureSetResult;
         }
 
         const texture = this.searchForTexture(path);
         if (texture) {
             return {
-                colorTexture: await extractFromImageFile(this.workerRequest.zipBuffer, texture),
+                colorTexture: extractFromImageFile(this.workerRequest.zipBuffer, texture),
             } as TextureSetResult;
         }
 
         throw new Error(`Texture image file "${path}" not found in ZIP`);
     }
 
-    async stichTexture({ colorTexture, mersTexture }: TextureSetResult, config: ImageConfig) {
+    stichTexture({ colorTexture, mersTexture }: TextureSetResult, config: ImageConfig) {
         const tile = this.addTexture(colorTexture, config, this.colorAtlasBuilder);
 
         if (mersTexture) {
