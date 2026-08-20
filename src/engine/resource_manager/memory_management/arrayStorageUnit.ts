@@ -23,21 +23,25 @@ export class ArrayStorageUnit<ElementType, MetaType> implements StorageUnit<Elem
     }
 
     public getMeta(id: number): MetaType | undefined {
-        return this.metadata[id];
+        return this.useMetadata ? this.metadata[id] : undefined;
     }
 
     public setMeta(id: number, value: MetaType) {
-        this.metadata[id] = value;
+        if (this.useMetadata) {
+            this.metadata[id] = value;
+        }
     }
 
     public writePointer(): number {
         return this.data.length;
     }
 
-    public add(value: Partial<ElementType>, meta: MetaType): number {
+    public add(value?: Partial<ElementType>, meta?: MetaType): number {
         const id = this.data.length;
         this.data.push(value as ElementType);
-        this.metadata.push(meta);
+        if (this.useMetadata && meta !== undefined) {
+            this.metadata[id] = meta;
+        }
         return id;
     }
 
@@ -45,7 +49,7 @@ export class ArrayStorageUnit<ElementType, MetaType> implements StorageUnit<Elem
 
     public exportMetadata() {
         return {
-            metadata: [...this.metadata],
+            metadata: this.useMetadata ? [...this.metadata] : [],
             length: this.data.length,
             arrayData: [...this.data]
         };
@@ -61,6 +65,8 @@ export class ArrayStorageUnit<ElementType, MetaType> implements StorageUnit<Elem
         }
         if (this.useMetadata && state.metadata) {
             this.metadata = [...state.metadata];
+        } else {
+            this.metadata = [];
         }
     }
 }

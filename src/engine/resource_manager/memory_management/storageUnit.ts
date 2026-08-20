@@ -16,7 +16,7 @@ export interface StorageUnit<ElementType, MetaType> {
     writePointer(): number;
 
     // Add a new resource to the storage unit, returning its ID (supports partial elements)
-    add(value: Partial<ElementType>, meta: MetaType): number;
+    add(value?: Partial<ElementType>, meta?: MetaType): number;
 
     // Exports the internal metadata table (excluding raw binary buffers)
     exportMetadata(): {

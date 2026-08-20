@@ -1,9 +1,8 @@
-import Player from "@player/player";
-import { PlayerData } from "@player/playerData";
+import { Player, PlayerData } from "@engine/player";
 import { compose, event, query, shadowRoot, shadowStyle } from 'web-components';
 
 @compose("webcraft-player")
-export default class WebcraftPlayer extends HTMLElement {
+export class WebcraftPlayer extends HTMLElement {
 	@shadowRoot()
 	accessor html = /*html */`
 		<canvas id="canvas"></canvas>
@@ -19,6 +18,7 @@ export default class WebcraftPlayer extends HTMLElement {
 		}
 
 		#canvas {
+			display: block;
 			overflow: hidden;
 			width: 100%;
 			height: 100%;
@@ -40,7 +40,10 @@ export default class WebcraftPlayer extends HTMLElement {
 	accessor canvas!: HTMLCanvasElement;
 
 	public player!: Player;
-	private resizeObserver!: ResizeObserver;
+	private handleResize = () => {
+		const world = this.player?.getWorld();
+		this.setCanvasSize(world?.sceneManager.renderer);
+	};
 
 	constructor() {
 		super();
@@ -55,10 +58,6 @@ export default class WebcraftPlayer extends HTMLElement {
 			// Set canvas buffer size (actual resolution) based on device pixel ratio
 			this.canvas.width = bounds.width * dpr;
 			this.canvas.height = bounds.height * dpr;
-			
-			// Set display size (CSS size) to the element bounds
-			this.canvas.style.width = bounds.width + 'px';
-			this.canvas.style.height = bounds.height + 'px';
 			
 			// Update camera aspect ratio and canvas target size
 			this.player.camera.aspect = bounds.width / bounds.height;
@@ -99,28 +98,35 @@ export default class WebcraftPlayer extends HTMLElement {
 		
 		this.player = new Player(this, playerData);
 
-		const event = new CustomEvent("player-join", {
-			bubbles: true,
-			composed: true,
-			detail: {
-				player: this.player
+		// Defer to ensure parent webcraft-world has finished upgrading and listening
+		setTimeout(() => {
+			const event = new CustomEvent("player-join", {
+				bubbles: true,
+				composed: true,
+				detail: {
+					player: this.player
+				}
+			});
+			this.dispatchEvent(event); 
+
+			// Because custom event dispatch is synchronous, the world reference is set immediately
+			const world = this.player.getWorld();
+
+			if (!world) {
+				console.error("Player is not associated with a world");
+				return;
 			}
-		});
-
-		this.dispatchEvent(event); 
-
-		// Because custom event dispatch is synchronous, the world reference is set immediately
-		const world = this.player.getWorld();
-
-		// Watch for size changes and update layout automatically
-		this.resizeObserver = new ResizeObserver(() => {
-			this.setCanvasSize(world?.sceneManager.renderer);
-		});
-		this.resizeObserver.observe(this);
+			
+			// Set initial canvas size immediately
+			this.setCanvasSize(world.sceneManager.renderer);
+			
+			// Listen to window resize instead of element ResizeObserver to prevent layout loop crashes
+			window.addEventListener("resize", this.handleResize);
+		}, 0);
 	}
 
 	disconnectedCallback() {
-		this.resizeObserver.disconnect();
+		window.removeEventListener("resize", this.handleResize);
 
 		const world = this.player.getWorld();
 		if (world) {

@@ -1,9 +1,15 @@
+import { World } from "@engine/world";
 import { ResourcePack } from "src/engine/resource_manager/RP";
-import World from "@world/world";
 import { compose, event, shadowRoot, shadowStyle } from 'web-components';
 
+declare global {
+	interface DocumentEventMap {
+		"request-resource-pack": CustomEvent<World>;
+	}
+}
+
 @compose("webcraft-world")
-export default class WebcraftWorld extends HTMLElement {
+export class WebcraftWorld extends HTMLElement {
 	@shadowRoot()
 	accessor html = `<slot></slot>`;
 
@@ -18,11 +24,17 @@ export default class WebcraftWorld extends HTMLElement {
 
 	constructor() {
 		super();
+
+		this.addEventListener("player-join", (e: any) => {
+			const { player } = e.detail;
+			this.registerPlayer(player);
+		});
 	}
 
 	@event("player-join")
 	onPlayerJoin(e: CustomEvent) {
 		const { player } = e.detail;
+		console.log(`Player ${player.id()} joined the world.`);
 		this.registerPlayer(player);
 	}
 
@@ -35,7 +47,8 @@ export default class WebcraftWorld extends HTMLElement {
 	}
 
 	connectedCallback() {
-		// Connection-time setup (the parent app or controller binds the resourcePack directly)
+		const event = new CustomEvent("request-resource-pack", { detail: this.world });
+		document.dispatchEvent(event);
 	}
 
 	private registerPlayer(player: any) {

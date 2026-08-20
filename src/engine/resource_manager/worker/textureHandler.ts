@@ -11,7 +11,10 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
             const mapper = new TextureMapper(request);
             
             // Run the parsing pipeline
+            const startTime = performance.now();
             mapper.parse();
+            const duration = performance.now() - startTime;
+            console.log(`[Worker] Atlas building took ${duration.toFixed(2)}ms`);
 
             // Export metadata and checkout buffers
             const registries = {

@@ -1,11 +1,14 @@
+import { AtlasRegistry } from "src/engine/resource_manager/registry/atlasRegistry";
 import { ResourcePack } from "src/engine/resource_manager/RP";
 import { PlayerRegistry } from "./playerRegistry";
 import { SceneManager } from "./sceneManager";
 
-import Player from "@engine/player/player";
+import { Player } from "@engine/player";
 import * as THREE from "three/webgpu";
 
-export default class World {
+import * as Constants from "@engine/resource_manager/constants";
+
+export class World {
 	playerRegistry = new PlayerRegistry();
 	sceneManager = new SceneManager();
 	public resourcePack!: ResourcePack;
@@ -20,6 +23,47 @@ export default class World {
 		const { scene, renderer } = this.sceneManager;
 		await renderer.init();
 		renderer.shadowMap.enabled = true;
+
+		// 1. Retrieve the compiled textures from AtlasRegistry
+		const atlasRegistry = this.resourcePack.get(AtlasRegistry);
+		
+		const [atlasWidth, atlasHeight] = Constants.ATLAS_DIMENSIONS;
+		const layerSize = atlasWidth * atlasHeight * 4;
+
+		// Color Atlas: First layer
+		const colorData = new Uint8Array(atlasRegistry.atlasBuffer, 0, layerSize);
+		const colorTexture = new THREE.DataTexture(colorData, atlasWidth, atlasHeight, THREE.RGBAFormat);
+		colorTexture.minFilter = THREE.NearestFilter;
+		colorTexture.magFilter = THREE.NearestFilter;
+		colorTexture.generateMipmaps = false; // Disable mipmapping for sharp pixel art
+		colorTexture.needsUpdate = true;
+
+		// MERS Atlas: Second layer
+		const mersData = new Uint8Array(atlasRegistry.atlasBuffer, layerSize, layerSize);
+		const mersTexture = new THREE.DataTexture(mersData, atlasWidth, atlasHeight, THREE.RGBAFormat);
+		mersTexture.minFilter = THREE.NearestFilter;
+		mersTexture.magFilter = THREE.NearestFilter;
+		mersTexture.generateMipmaps = false;
+		mersTexture.needsUpdate = true;
+
+		// 2. Create test quads
+		const planeGeometry = new THREE.PlaneGeometry(10, 10);
+		
+		// Color Atlas Quad (left side)
+		const colorMaterial = new THREE.MeshBasicNodeMaterial({
+			map: colorTexture
+		});
+		const colorQuad = new THREE.Mesh(planeGeometry, colorMaterial);
+		colorQuad.position.set(-6, 5, -15);
+		scene.add(colorQuad);
+
+		// MERS Atlas Quad (right side)
+		const mersMaterial = new THREE.MeshBasicNodeMaterial({
+			map: mersTexture
+		});
+		const mersQuad = new THREE.Mesh(planeGeometry, mersMaterial);
+		mersQuad.position.set(6, 5, -15);
+		scene.add(mersQuad);
 
 		const cubeGeometry = new THREE.BoxGeometry(2, 2, 2);
 		const cubeMaterial = new THREE.MeshPhongNodeMaterial({
@@ -68,8 +112,6 @@ export default class World {
 
 	removePlayer(player: Player) {
 		player.cleanup();
-		this.world.removePlayer(player); // wait, this should be playerRegistry.removePlayer(player) or this.removePlayer?
-		// Actually, let's fix the bug here if it exists: in original it was this.playerRegistry.removePlayer(player)
 		this.playerRegistry.removePlayer(player);
 	}
 }

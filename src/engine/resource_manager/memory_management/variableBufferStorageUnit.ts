@@ -46,11 +46,13 @@ export class VariableBufferStorageUnit<T extends TypedArray, MetaType> implement
     }
 
     public getMeta(id: number): MetaType | undefined {
-        return this.metadataTable[id];
+        return this.useMetadata ? this.metadataTable[id] : undefined;
     }
 
     public setMeta(id: number, value: MetaType) {
-        this.metadataTable[id] = value;
+        if (this.useMetadata) {
+            this.metadataTable[id] = value;
+        }
     }
 
     public writePointer(): number {
@@ -60,7 +62,10 @@ export class VariableBufferStorageUnit<T extends TypedArray, MetaType> implement
     /**
      * Appends a variable-length TypedArray packet, returning its start index offset
      */
-    public add(value: T, meta?: MetaType): number {
+    public add(value?: T, meta?: MetaType): number {
+        if (value === undefined) {
+            throw new Error("VariableBufferStorageUnit requires a value to determine length for allocation");
+        }
         const id = this.allocatedLength; // Starting element index is the ID
         this.allocatedLength += value.length;
 
@@ -98,7 +103,7 @@ export class VariableBufferStorageUnit<T extends TypedArray, MetaType> implement
 
     public exportMetadata() {
         return {
-            metadata: [...this.metadataTable],
+            metadata: this.useMetadata ? [...this.metadataTable] : [],
             length: this.allocatedLength
         };
     }
@@ -108,8 +113,8 @@ export class VariableBufferStorageUnit<T extends TypedArray, MetaType> implement
         length: number;
     }): void {
         this.allocatedLength = state.length;
-        if (state.metadata) {
-            this.metadataTable.length = 0;
+        this.metadataTable.length = 0;
+        if (this.useMetadata && state.metadata) {
             this.metadataTable.push(...state.metadata);
         }
     }

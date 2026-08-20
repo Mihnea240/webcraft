@@ -13,11 +13,7 @@
       "*": ["./*"],
       "@engine/*": ["./src/engine/*"],
       "@utils/*": ["./src/engine/utils/*"],
-      "@web_components/*": ["./src/web_components/*"],
-      "@chunk/*": ["./src/engine/chunk/*"],
-      "@block/*": ["./src/engine/block/*"],
-      "@player/*": ["./src/engine/player/*"],
-      "@world/*": ["./src/engine/world/*"],
+      "@web_components": ["./src/web_components/index.ts"],
       "@bedrock-types/*": ["./src/bedrock-types/*"],
       "web-components": ["../web-components/core/decorators/index"],
       "web-components/*": ["../web-components/core/*"]

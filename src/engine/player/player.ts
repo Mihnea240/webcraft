@@ -1,10 +1,11 @@
-import World from "@engine/world/world";
-import WebcraftPlayer from "src/web_components/webcraft-player";
-import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
-import * as THREE from "three/webgpu";
+import { World } from "@engine/world";
+import { WebcraftPlayer } from "@web_components";
 import { PlayerData as PlayerInfo } from "./playerData";
 
-export default class Player {
+import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
+import * as THREE from "three/webgpu";
+
+export class Player {
 	private readonly _id: string;
 	private world: World | null = null;
 	public camera: THREE.PerspectiveCamera;

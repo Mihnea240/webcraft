@@ -36,15 +36,27 @@ export abstract class ResourceRegistry<ElementType, MetaType> {
         return this.storage.writePointer();
     }
 
-    public push(name: string, value: Partial<ElementType>, meta: MetaType): number {
+    public push(name: string, value?: Partial<ElementType>, meta?: MetaType): number {
         const id = this.storage.add(value, meta);
         this.nameToIdMap.set(name, id);
         this.idToNameMap.set(id, name);
         return id;
     }
 
-    public add(value: Partial<ElementType>, meta: MetaType): number {
+    public add(value?: Partial<ElementType>, meta?: MetaType): number {
         return this.storage.add(value, meta);
+    }
+
+    /**
+     * Allocates a slot in the storage unit (without specifying an element value),
+     * registers the name-to-id mapping, and returns the newly allocated ID.
+     * This avoids creating a value object when writing directly to buffer views.
+     */
+    public register(name: string, meta?: MetaType): number {
+        const id = this.storage.add(undefined, meta);
+        this.nameToIdMap.set(name, id);
+        this.idToNameMap.set(id, name);
+        return id;
     }
 
     // --- Local & Cascading Name-ID Mappings ---

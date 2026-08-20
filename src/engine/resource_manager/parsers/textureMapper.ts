@@ -8,35 +8,99 @@ import * as Constants from "../constants";
 import { colorFromHex, imageWithOverlay, imageWithTint } from "src/engine/utils/imageManipulations";
 
 import type { FlipbookTexture, FlipbookTextureFile } from "@bedrock-types/rp/textures/flipbook_textures";
-import type { TerrainTextureFile, Texture, Texture2, TextureData1 } from "@bedrock-types/rp/textures/terrain_texture";
-import type { BlockceptionMinecraftResourceTextureTextureSet, FileName } from "@bedrock-types/rp/textures/texture_set";
+import type { TerrainTextureFile, Texture2, TextureData1, Variantions } from "@bedrock-types/rp/textures/terrain_texture";
 
 type ImageConfig = {
-    tint_color?: string;
-    overlay_color?: string;
     position?: { x: number, y: number }; // Optional position for placing the image in the atlas
     frames?: number[]; // Optional frames for flipbook textures
-    addToTextureRegistry?: boolean; // Optional flag to add the texture to the registry
-}
+
+    // The name registered in the texture registry for this entry
+    //For enties with tint/overlay, it will be diffrent from the path
+    textureRegistryName: string;
+    path: string; // Path to the texture file (without extension)
+} & Texture2
 
 type TextureSetResult = {
     colorTexture: { width: number, height: number, data: Uint8Array };
     mersTexture?: { width: number, height: number, data: Uint8Array };
 }
 
-function createFallbackImageData(): Uint8Array {
-    const data = new Uint8Array(16 * 16 * 4);
-    for (let y = 0; y < 16; y++) {
-        for (let x = 0; x < 16; x++) {
-            const isPurple = ((Math.floor(x / 8) + Math.floor(y / 8)) % 2) === 0;
-            const offset = (y * 16 + x) * 4;
-            data[offset] = isPurple ? 255 : 0;     // R
-            data[offset + 1] = 0;                  // G
-            data[offset + 2] = isPurple ? 255 : 0; // B
-            data[offset + 3] = 255;                // A
+class TerrainParser {
+    constructor(private terrainTextureJson: TerrainTextureFile) {
+
+    }
+
+    *enties(entry: TextureData1) {
+        if (Array.isArray(entry.textures)) {
+            for (let i = 0; i < entry.textures!.length; i++) {
+                let texture = entry.textures![i];
+                if (typeof texture === "string") {
+                    texture = { path: texture };
+                    entry.textures![i] = texture;
+                }
+
+                const variations = (texture as Texture2).variations;
+                if (variations) {
+                    this.resolveVariations(variations);
+                }
+                yield texture as Texture2;
+            }
+        } else if (typeof entry.textures === "string") {
+            const texture = { path: entry.textures };
+            entry.textures = texture as any;
+            yield texture;
+        } else {
+            const texture = entry.textures as Texture2;
+            const variations = texture.variations;
+            if (variations) {
+                this.resolveVariations(variations);
+            }
+
+            yield texture;
         }
     }
-    return data;
+
+    resolveVariations(variations: Variantions) {
+        const nullWeightCount = variations.filter(v => v.weight === undefined).length;
+        const totalWeight = variations.reduce((sum, v) => sum + (v.weight ?? 0), 0);
+        const weightDistribution = Math.floor((100 - totalWeight) / nullWeightCount);
+
+        for (const variation of variations) {
+            variation.weight ??= weightDistribution;
+        }
+    }
+
+    getTextureEntry(atlas_tile: string, index?: number): Texture2 {
+        const entry = this.terrainTextureJson.texture_data![atlas_tile];
+        if (!entry) {
+            throw new Error(`Terrain texture entry not found for atlas_tile: ${atlas_tile}`);
+        }
+
+        let tex = entry.textures;
+        if (Array.isArray(tex)) {
+            const idx = index !== undefined ? index : 0;
+            const texture = tex[idx];
+            if (typeof texture === "string") {
+                const obj = { path: texture } as Texture2;
+                tex[idx] = obj;
+                return obj;
+            }
+            return texture as Texture2;
+        } else {
+            if (typeof tex === "string") {
+                const obj = { path: tex } as Texture2;
+                entry.textures = obj as any;
+                return obj;
+            }
+            return tex as Texture2;
+        }
+    }
+
+    incorporateVariation(config: ImageConfig, variationIndex: number) {
+        const variation = config.variations![variationIndex];
+        config.path = variation.path;
+        config.textureRegistryName = !!(config.tint_color || config.overlay_color) ? `${config.path}__${variationIndex}` : config.path;
+    }
 }
 
 export class TextureMapper {
@@ -54,10 +118,9 @@ export class TextureMapper {
     atlasTileRegistry!: AtlasTileRegistry;
 
     public fallbackTextureId!: number;
+    terrainParser!: TerrainParser;
 
-    private atlasEntryCompilation = new Uint16Array(512); // Temporary buffer for compiling atlas entries before placing them in the registry
-
-    constructor(private workerRequest: WorkerRequest) {
+    constructor(private workerRequest: WorkerRequest, public useMers: boolean = false) {
         this.headers = extractHeaders(workerRequest.zipBuffer);
 
         this.blockTextureRegistry = new BlockTextureRegistry();
@@ -79,49 +142,29 @@ export class TextureMapper {
             registry.importMetadata(workerRequest.metadata[key]);
             registry.importBuffers(registryBuffers);
         }
-
-        // Initialize builders directly in the constructor
-        this.initAtlasBuilders(this.atlasRegistry.atlasBuffer, 8);
     }
 
-    initAtlasBuilders(atlasBuffer: ArrayBuffer, padding: number) { 
-        this.colorAtlasBuilder = new AtlasBuilder(new Uint8Array(atlasBuffer), 4096, 4096, 16, padding);
-        this.mersAtlasBuilder = new AtlasBuilder(new Uint8Array(atlasBuffer, Constants.INITIAL_ATLAS_SIZE), 4096, 4096, 16, padding);
+    initAtlasBuilders(atlasBuffer: ArrayBuffer, padding: number) {
+        const [width, height] = Constants.ATLAS_DIMENSIONS;
+        const ATLAS_SIZE = width * height * 4; // Assuming RGBA format
+
+        const colorArray = new Uint8Array(atlasBuffer, 0, ATLAS_SIZE);
+        const mersArray = new Uint8Array(atlasBuffer, ATLAS_SIZE, ATLAS_SIZE);
+
+        this.colorAtlasBuilder = new AtlasBuilder(colorArray, width, height, 16, padding);
+        this.mersAtlasBuilder = new AtlasBuilder(mersArray, width, height, 16, padding);
     }
 
-    initFallbackTexture() {
-        const data = createFallbackImageData();
-        const tile = this.addTexture({ width: 16, height: 16, data }, { addToTextureRegistry: false });
-        this.fallbackTextureId = this.blockTextureRegistry.push(".fallback", {
-            atlas_u: tile.x,
-            atlas_v: tile.y,
-            atlas_w: 0,
-            texture_u_exponent: 4, // 16px = 2^4
-            texture_v_exponent: 4
-        }, {
-            tinted: false,
-            pure: true
-        });
-    }
-
-    parse() {
-        // Create fallback texture first
-        this.initFallbackTexture();
-
-        //Extract terrain texture json
-        const terrainTextureFile = this.headers.get("textures/terrain_texture.json")!;
-        const terrainTextureJson = this.terrainTextureJson = fileToJson(this.workerRequest.zipBuffer, terrainTextureFile);
-
-        //Extract flipbook texture json
-        const flipbookTextureFile = this.headers.get("textures/flipbook_textures.json")!;
-        this.flipbookTextureJson = fileToJson(this.workerRequest.zipBuffer, flipbookTextureFile);
-
-        this.addFlipbookTiles();
-        this.addTerrainTiles();
+    get missing() {
+        if (this.fallbackTextureId === undefined) {
+            const entry = this.terrainParser.getTextureEntry("missing");    
+            this.fallbackTextureId = this.addTile(entry as ImageConfig);
+        }
+        return this.fallbackTextureId;
     }
 
     searchForTextureSet(path: string) {
-        const textureSet = path + ".textureset.json";
+        const textureSet = path + ".texture_set.json";
         const textureSetFile = this.headers.get(textureSet);
 
         if (textureSetFile) {
@@ -150,218 +193,27 @@ export class TextureMapper {
         return undefined;
     }
 
-    addFlipbookTiles() {
-        if (!this.flipbookTextureJson) return;
-        for (const flipbookTexture of this.flipbookTextureJson) {
-            this.addFlipbookEntry(flipbookTexture);
-        }
-    }
-
-    addTerrainTiles() {
-        for (const [name, entry] of Object.entries(this.terrainTextureJson.texture_data!)) {
-            this.addTerrainEntry(name, entry);
-        }
-    }
-
-    *normalizeTerrainTextureEntry(entry: TextureData1) {
-        const isArray = Array.isArray(entry.textures);
-        const textures = Array.isArray(entry.textures) ? entry.textures : [entry.textures];
-
-        for (let i = 0; i < textures.length; i++) {
-            const texture = textures[i];
-            const index = isArray ? i : undefined;
-
-            if (typeof texture === "string") {
-                yield { path: texture, index: index, variant: undefined };
-            } else if (texture!.variations) {
-                const variations = texture!.variations;
-                for (let j = 0; j < variations.length; j++) {
-                    const variation = variations[j];
-                    yield { path: variation.path, index: index, variant: j, weight: variation.weight || 0 };
-                }
-            } else {
-                yield { path: texture!.path, index: index, variant: undefined };
-            }
-        }
-    }
-
-    addTerrainEntry(name: string, entry: TextureData1) {
-        const tileData: any[] = [];
-        let lastVariant = -1, lastVariations: number[] | undefined = undefined;
-
-        for (const { path, index, variant, weight } of this.normalizeTerrainTextureEntry(entry)) {
-            const textureId = this.addTileAtIndex(entry, index, variant);
-
-            if (variant === undefined) {
-                tileData.push(textureId);
-            } else {
-                if (variant !== lastVariant) {
-                    //Resolve unspecified weights for the last set of variations
-                    if (lastVariant != -1) {
-                        const weights = lastVariations!.filter((_, i) => i % 2 === 1);
-                        const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-                        const zeroeWeightCount = weights.filter(w => w === 0).length;
-                        const weightDistribution = Math.floor((100 - totalWeight) / zeroeWeightCount);
-                        for (let i = 0; i < lastVariations!.length; i += 2) {
-                            lastVariations![i + 1] ??= weightDistribution;
-                        }
-                    }
-
-                    tileData.push(lastVariations = [textureId!, weight]);
-
-                } else {
-                    lastVariations!.push(textureId!, weight);
-                }
-            }
-        }
-
-        this.atlasTileRegistry.pushWithVariation(name, tileData);
-    }
-
-    addFlipbookEntry({ flipbook_texture, atlas_tile, frames, blend_frames, atlas_index, atlas_tile_variant }: FlipbookTexture) {
-        const terrainTextureEntry = this.terrainTextureJson.texture_data![atlas_tile!];
-
-        if (!terrainTextureEntry) {
-            console.warn(`Terrain texture entry not found for atlas_tile: ${atlas_tile}`);
-            return;
-        }
-
-        const textureId = this.addTileAtIndex(terrainTextureEntry, atlas_index, atlas_tile_variant);
-        const view = this.blockTextureRegistry.get(textureId!)!;
-        const position = {
-            x: view.atlas_u,
-            y: view.atlas_v + 1
-        }
-
-        view.a_framae_cnt = frames?.length || 0;
-        view.blend_frames = blend_frames ? 1 : 0;
-
-        //Add the animation frames to the atlas downwards from the base tile position
-        const textures = this.extractTextureFile(flipbook_texture!);
-        if (!textures) {
-            console.warn(`Flipbook texture not found for path: ${flipbook_texture}`);
-            return;
-        }
-
-        this.stichTexture(textures, {
-            addToTextureRegistry: false,
-            position,
-            frames
-        });
-    }
-
-    addTileAtIndex(textureDef: TextureData1, texture_index?: number, variant?: number): number {
-        let path = "";
-        try {
-            let texture: Texture2 | undefined = undefined;
-            let config: ImageConfig = {
-                addToTextureRegistry: true,
-            };
-
-            if (texture_index !== undefined) {
-                const textures = textureDef.textures as Texture[];
-                const tex = textures[texture_index];
-
-                if (typeof tex === "string") {
-                    texture = { path: tex };
-                } else {
-                    texture = tex;
-                    config.tint_color = texture.tint_color;
-                    config.overlay_color = texture.overlay_color;
-
-                    if (variant !== undefined) {
-                        const variations = texture.variations!;
-                        texture = variations[variant];
-                    }
-                }
-            } else {
-                const tex = textureDef.textures;
-                if (typeof tex === "string") {
-                    texture = { path: tex };
-                } else if (tex && typeof tex === "object") {
-                    texture = tex as Texture2;
-                    config.tint_color = texture.tint_color;
-                    config.overlay_color = texture.overlay_color;
-
-                    if (variant !== undefined) {
-                        const variations = texture.variations!;
-                        texture = variations[variant];
-                    }
-                }
-            }
-
-            if (!texture || !texture.path) {
-                throw new Error("Invalid texture definition: path not found");
-            }
-
-            path = texture.path;
-            const flattenedName = this.flattenName(path, texture_index, variant);
-
-            const existingId = this.blockTextureRegistry.nameToId(flattenedName);
-            if (existingId !== undefined) {
-                const metadata = this.blockTextureRegistry.getMeta(existingId)!;
-
-                if ((config.tint_color || config.overlay_color)) {
-                    if (!metadata.tinted) {
-                        // Use the existing tile and add a tinted version of it to the atlas
-                    } else {
-
-                    }
-                } else {
-                    // The texture was already added to the registry 
-                    if (!metadata.tinted) {
-                        return existingId;
-                    }
-                }
-            }
-
-            const textures = this.extractTextureFile(path);
-            const tile = this.stichTexture(textures, config);
-            return this.blockTextureRegistry.push(flattenedName, {
-                atlas_u: tile.x,
-                atlas_v: tile.y,
-                atlas_w: 0,
-                texture_u_exponent: Math.log2(tile.width),
-                texture_v_exponent: Math.log2(tile.height)
-            }, {
-                tinted: !!(config.tint_color || config.overlay_color),
-                pure: false
-            });
-
-        } catch (error) {
-            console.warn(`[TextureMapper] Failed loading tile for path "${path || 'unknown'}":`, error);
-            return this.fallbackTextureId;
-        }
-    }
-
-    flattenName(name: string, tileIndex?: number, variantIndex?: number) {
-        let flattenedName = name;
-        if (tileIndex !== undefined) {
-            flattenedName += `_${tileIndex}`;
-        }
-        if (variantIndex !== undefined) {
-            flattenedName += `_${variantIndex}`;
-        }
-        return flattenedName;
-    }
-
     extractTextureFile(path: string): TextureSetResult {
         const textureSet = this.searchForTextureSet(path);
-        if (textureSet) {
-            const textureSetJson = fileToJson(this.workerRequest.zipBuffer, textureSet) as BlockceptionMinecraftResourceTextureTextureSet;
+        if (textureSet && this.useMers) {
+            const textureSetJson = fileToJson(this.workerRequest.zipBuffer, textureSet);
             const { color, metalness_emissive_roughness_subsurface } = textureSetJson["minecraft:texture_set"];
 
-            const colorTexture = this.searchForTexture(color as FileName);
-            const mersTexture = this.searchForTexture(metalness_emissive_roughness_subsurface as FileName);
+            const colorPath = path.replace(/[^/]+$/, color);
+            const mersPath = path.replace(/[^/]+$/, metalness_emissive_roughness_subsurface);
+            const colorTexture = this.searchForTexture(colorPath);
+            const mersTexture = this.searchForTexture(mersPath);
 
             if (!colorTexture) {
-                throw new Error(`Color texture "${color}" not found in ZIP for set: ${path}`);
+                throw new Error(`Color texture "${colorPath}" not found in ZIP for set: ${path}`);
             }
 
-            return {
+            const result: TextureSetResult = {
                 colorTexture: extractFromImageFile(this.workerRequest.zipBuffer, colorTexture),
                 mersTexture: mersTexture ? extractFromImageFile(this.workerRequest.zipBuffer, mersTexture) : undefined
-            } as TextureSetResult;
+            };
+
+            return result;
         }
 
         const texture = this.searchForTexture(path);
@@ -374,21 +226,158 @@ export class TextureMapper {
         throw new Error(`Texture image file "${path}" not found in ZIP`);
     }
 
-    stichTexture({ colorTexture, mersTexture }: TextureSetResult, config: ImageConfig) {
-        const tile = this.addTexture(colorTexture, config, this.colorAtlasBuilder);
+    parse() {
+        //Extract terrain texture json
+        const terrainTextureFile = this.headers.get("textures/terrain_texture.json")!;
+        this.terrainTextureJson = fileToJson(this.workerRequest.zipBuffer, terrainTextureFile);
 
+        this.initAtlasBuilders(this.atlasRegistry.atlasBuffer, this.terrainTextureJson.padding ?? 8);
+        this.terrainParser = new TerrainParser(this.terrainTextureJson);
+
+        //Extract flipbook texture json
+        const flipbookTextureFile = this.headers.get("textures/flipbook_textures.json")!;
+        this.flipbookTextureJson = fileToJson(this.workerRequest.zipBuffer, flipbookTextureFile);
+
+        for (const entry of this.flipbookTextureJson) {
+            try {
+                this.addFlipbookEntry(entry);
+            } catch (error) {
+                console.error("[Flipbook]", error);
+            }
+        }
+
+        for (const [atlasTile, entry] of Object.entries(this.terrainTextureJson.texture_data!)) {
+            try {
+                this.addTerrainEntry(atlasTile, entry);
+            } catch (error) {
+                console.error("[Terrain]", error);
+            }
+        }
+    }
+
+
+    addTerrainEntry(name: string, entry: TextureData1) {
+        const tileData: (number | number[])[] = [];
+        let i = 0;
+
+        for (const texture of this.terrainParser.enties(entry)) {
+            const config = texture as ImageConfig;
+            const tainted = config.tint_color || config.overlay_color;
+
+            if (config.variations) {
+                const variations = config.variations;
+                const variationData: number[] = [];
+                tileData.push(variationData);
+
+                for (let i = 0; i < config.variations.length; i++) {
+                    this.terrainParser.incorporateVariation(config, i);
+
+                    const id = this.addTile(config);
+                    variationData.push(id);
+                    variationData.push(variations[i].weight!);
+                }
+
+                continue;
+            }
+
+            i++;
+            if (tainted) {
+                config.textureRegistryName = `${config.path}__${name}__${i}`;
+            }
+
+            const id = this.addTile(config);
+            tileData.push(id);
+        }
+
+        return this.atlasTileRegistry.pushWithVariation(name, tileData);
+    }
+
+    addFlipbookEntry({
+        flipbook_texture,
+        atlas_tile, frames,
+        blend_frames,
+        atlas_index,
+        atlas_tile_variant,
+        ticks_per_frame,
+    }: FlipbookTexture
+    ) {
+        const terrainTextureEntry = this.terrainTextureJson.texture_data![atlas_tile!];
+
+        if (!terrainTextureEntry) {
+            console.warn(`Terrain texture entry not found for atlas_tile: ${atlas_tile}`);
+            return;
+        }
+
+        const textures = this.extractTextureFile(flipbook_texture!);
+
+        // If frames is omitted, generate the natural frame order: [0, 1, 2, ..., N-1]
+        let animationFrames = frames;
+        const width = textures.colorTexture.width;
+        const height = textures.colorTexture.height;
+
+        if (!animationFrames) {
+            const frameCount = Math.floor(height / width);
+            animationFrames = Array.from({ length: frameCount }, (_, i) => i);
+        }
+
+        const config = this.terrainParser.getTextureEntry(atlas_tile!, atlas_index) as ImageConfig;
+        if (atlas_tile_variant !== undefined) {
+            if (config.variations) {
+                config.variations[atlas_tile_variant].path = flipbook_texture!;
+            }
+        }
+
+        config.textureRegistryName = config.path = flipbook_texture!;
+        config.frames = animationFrames;
+
+        config.position = this.addTexture(textures.colorTexture, config, this.colorAtlasBuilder);
+        if (textures.mersTexture) {
+            this.addTexture(textures.mersTexture, config, this.mersAtlasBuilder);
+        }
+
+        const id = this.blockTextureRegistry.register(config.textureRegistryName);
+        const view = this.blockTextureRegistry.get(id)!;
+
+        view.atlas_u = config.position.x;
+        view.atlas_v = config.position.y;
+        view.texture_v_exponent = view.texture_u_exponent = Math.log2(width);
+        view.a_framae_cnt = animationFrames.length;
+        view.a_speed = ticks_per_frame ?? 1;
+        view.blend_frames = blend_frames ? 1 : 0;
+    }
+
+    addTile(config: ImageConfig): number {
+        const name = config.textureRegistryName ?? config.path;
+        const existingId = this.blockTextureRegistry.nameToId(name);
+        if (existingId !== undefined) {
+            return existingId;
+        }
+
+        const { colorTexture, mersTexture } = this.extractTextureFile(config.path);
+        if (colorTexture.height > colorTexture.width) { 
+            console.warn(`Texture ${config.path} has height greater than width. This may cause issues with texture mapping.`);
+            return this.missing;
+        }
+
+        const pos = this.addTexture(colorTexture, config, this.colorAtlasBuilder);
         if (mersTexture) {
-            config.position = tile; // Use the same position for the mers texture
             this.addTexture(mersTexture, config, this.mersAtlasBuilder);
         }
 
-        return {
-            ...tile,
-            width: colorTexture.width,
-            height: colorTexture.height
-        };
+        const width = colorTexture.width;
+        const height = config.frames ? colorTexture.width : colorTexture.height;
+
+        const id = this.blockTextureRegistry.register(name);
+        const view = this.blockTextureRegistry.get(id)!;
+        view.atlas_u = pos.x;
+        view.atlas_v = pos.y;
+        view.texture_u_exponent = Math.log2(width);
+        view.texture_v_exponent = Math.log2(height);
+
+        return id;
     }
 
+    //Used to attach the texture to the atlas and return the position of the texture in the atlas
     addTexture(texture: { width: number, height: number, data: Uint8Array }, config?: ImageConfig, atlas = this.colorAtlasBuilder) {
         const { width, height, data } = texture;
 
@@ -399,12 +388,14 @@ export class TextureMapper {
         }
 
         if (config?.frames) {
-            const position = config.position ?? this.colorAtlasBuilder.getNextAvailablePosition(width, height);
+            const totalHeight = config.frames.length * (width + atlas.padding * 2) - atlas.padding * 2;
+            const position = config.position ?? this.colorAtlasBuilder.getNextAvailablePosition(width, totalHeight);
             if (!position) {
-                throw new Error("Could not find available position in atlas for image of size " + width + "x" + height);
+                throw new Error("Could not find available position in atlas for image of size " + width + "x" + totalHeight);
             }
 
             const frameSize = width * width * 4; // Assuming RGBA format
+            const frameSpan = Math.ceil((width + 2 * atlas.padding) / atlas.unitSize);
             let framePosition = { x: position.x, y: position.y };
 
             for (const frameIndex of config.frames) {
@@ -412,7 +403,7 @@ export class TextureMapper {
                 const frameData = new Uint8Array(data.buffer, data.byteOffset + frameOffset, frameSize);
 
                 atlas.addImage(frameData, width, width, framePosition);
-                framePosition.y++; // Move to the next row for the next frame
+                framePosition.y += frameSpan; // Move to the next row for the next frame
             }
 
             return position;

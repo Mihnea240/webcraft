@@ -22,7 +22,7 @@ export class AtlasRegistry extends ResourceRegistry<AtlasLayer, any> {
     }
     
     createStorageUnit() {
-        return new ArrayStorageUnit<AtlasLayer, any>();
+        return new ArrayStorageUnit<AtlasLayer, any>(0, true);
     }
 
     public override checkoutBuffers(): ArrayBuffer[] {

@@ -32,18 +32,20 @@ export class BufferStorageUnit<TSchema extends Struct<any>, MetaType> implements
     }
 
     public getMeta(id: number): MetaType | undefined {
-        return this.metadataTable[id];
+        return this.useMetadata ? this.metadataTable[id] : undefined;
     }
 
     public setMeta(id: number, value: MetaType) {
-        this.metadataTable[id] = value;
+        if (this.useMetadata) {
+            this.metadataTable[id] = value;
+        }
     }
 
     public writePointer(): number {
         return this.allocatedLength;
     }
 
-    public add(value: Partial<any>, meta?: MetaType): number {
+    public add(value?: Partial<any>, meta?: MetaType): number {
         const id = this.allocatedLength;
         this.allocatedLength++;
 
@@ -57,8 +59,10 @@ export class BufferStorageUnit<TSchema extends Struct<any>, MetaType> implements
         new Uint8Array(this.buffer, byteOffset, this.elementStride).fill(0);
 
         // Write packed binary struct data
-        this.packer.byteOffset = byteOffset;
-        Object.assign(this.packer.view, value);
+        if (value !== undefined) {
+            this.packer.byteOffset = byteOffset;
+            Object.assign(this.packer.view, value);
+        }
 
         // Store metadata
         if (this.useMetadata && meta !== undefined) {
@@ -86,7 +90,7 @@ export class BufferStorageUnit<TSchema extends Struct<any>, MetaType> implements
 
     public exportMetadata() {
         return {
-            metadata: [...this.metadataTable],
+            metadata: this.useMetadata ? [...this.metadataTable] : [],
             length: this.allocatedLength
         };
     }
@@ -96,8 +100,8 @@ export class BufferStorageUnit<TSchema extends Struct<any>, MetaType> implements
         length: number;
     }): void {
         this.allocatedLength = state.length;
-        if (state.metadata) {
-            this.metadataTable.length = 0;
+        this.metadataTable.length = 0;
+        if (this.useMetadata && state.metadata) {
             this.metadataTable.push(...state.metadata);
         }
     }

@@ -16,9 +16,10 @@ export class AtlasBuilder {
         this.height = height;
         this.atlas = buffer;
         
-        const slotsWidth = Math.floor(width / (this.unitSize + this.padding * 2));
-        const slotsHeight = Math.floor(height / (this.unitSize + this.padding * 2));
+        const slotsWidth = Math.floor(width / this.unitSize);
+        const slotsHeight = Math.floor(height / this.unitSize);
 
+        console.log(`[AtlasBuilder] Initialized with ${slotsWidth}x${slotsHeight} slots of size ${this.unitSize} and padding ${this.padding}.`);
         this.occupancy = new Array3D<Uint8Array>(slotsWidth, slotsHeight, 1).allocateBuffer(Uint8Array);
         this.occupancy.fill(0);
     }
@@ -118,12 +119,12 @@ export class AtlasBuilder {
 
     // Get the next available position in the atlas for an image of given width and height in pixels, considering the padding and unit size. Returns undefined if no position is available.
     getNextAvailablePosition(width: number, height: number) {
-        width = Math.ceil((width + 2 * this.padding) / this.unitSize);
-        height = Math.ceil((height + 2 * this.padding) / this.unitSize);
+        const neededWidth = Math.ceil((width + 2 * this.padding) / this.unitSize);
+        const neededHeight = Math.ceil((height + 2 * this.padding) / this.unitSize);
         
         let { x, y } = this.pointer;
         while (x < this.occupancy.x && y < this.occupancy.y) {
-            if (this.fits(x, y, width, height)) {
+            if (this.fits(x, y, neededWidth, neededHeight)) {
                 return { x, y };
             }
 
@@ -144,6 +145,9 @@ export class AtlasBuilder {
     }
 
     addImage(src: Uint8Array, srcWidth: number, srcHeight: number, position?: { x: number, y: number }) {
+        const neededWidth = Math.ceil((srcWidth + 2 * this.padding) / this.unitSize);
+        const neededHeight = Math.ceil((srcHeight + 2 * this.padding) / this.unitSize);
+
         position ??= this.getNextAvailablePosition(srcWidth, srcHeight);
         if (!position) { 
             throw new Error("Could not find available position in atlas for image of size " + srcWidth + "x" + srcHeight);
@@ -158,10 +162,7 @@ export class AtlasBuilder {
         this.copyToAtlas(src, srcWidth, srcHeight, imageX, imageY);
         this.paddImage(imageX, imageY, srcWidth, srcHeight);
 
-        const filledWidth = Math.ceil((srcWidth + 2 * this.padding) / this.unitSize);
-        const filledHeight = Math.ceil((srcHeight + 2 * this.padding) / this.unitSize);
-        
-        this.setOccupied(position.x, position.y, filledWidth, filledHeight);
+        this.setOccupied(position.x, position.y, neededWidth, neededHeight);
 
         return position;
     }
