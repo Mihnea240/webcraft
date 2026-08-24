@@ -1,10 +1,12 @@
 import { extractHeaders, fileToJson, ZipFileEntry } from '@engine/utils/decoders';
-import { AtlasTileRegistry } from './registry/atlasTileRegistry';
-import { BlockTextureRegistry } from "./registry/blockTextureRegistry";
 import { AtlasRegistry } from './registry/atlasRegistry';
+import { AtlasTileRegistry } from './registry/atlasTileRegistry';
+import { CubeGeometryRegistry } from './registry/cubeGeometryRegistry';
+import { BlockModelRegistry } from './registry/blockModelRegistry';
+import { BlockTextureRegistry } from "./registry/blockTextureRegistry";
 import { ResourceRegistry } from './registry/resourceRegistry';
-import { WorkerEntryPoint } from './workerEntryPoint';
 import { WorkerEventType } from './worker/workerDataProtocol';
+import { WorkerEntryPoint } from './workerEntryPoint';
 
 export interface ResourcePackData {
     name: string;
@@ -40,6 +42,8 @@ export class ResourcePack {
         this.registries.set(BlockTextureRegistry, new BlockTextureRegistry());
         this.registries.set(AtlasTileRegistry, new AtlasTileRegistry());
         this.registries.set(AtlasRegistry, new AtlasRegistry());
+        this.registries.set(CubeGeometryRegistry, new CubeGeometryRegistry());
+        this.registries.set(BlockModelRegistry, new BlockModelRegistry());
     }
 
     linkedClone(newUrl: string): ResourcePack {

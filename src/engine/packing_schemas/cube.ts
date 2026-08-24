@@ -30,5 +30,5 @@ export const CubeStruct = new Struct({
     n_way_z: new Bit(4),
     flags: new Bit(4),
 
-    bone_id: new Bit(16),
+    // bone_id: new Bit(16),
 });    

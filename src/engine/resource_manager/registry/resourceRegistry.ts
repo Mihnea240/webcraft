@@ -16,26 +16,31 @@ export abstract class ResourceRegistry<ElementType, MetaType> {
 
     // --- Direct Forwarding of StorageUnit Methods ---
 
-    public get(id: number): ElementType | undefined {
-        return this.storage.get(id);
+    /** Returns the element at the given ID, expected to be a valid ID, as such the return type cant be undefined. */
+    public get(id: number): ElementType {
+        return this.storage.get(id) as ElementType;
     }
 
-    public set(id: number, value: Partial<ElementType>): void {
+    /** Sets the main resource value at the given ID, */
+    public set(id: number, value: Partial<ElementType>) {
         this.storage.set(id, value);
     }
-
-    public getMeta(id: number): MetaType | undefined {
-        return this.storage.getMeta(id);
+    /** Returns the metadata associated with the given ID, expected to be a valid ID, as such the return type cant be undefined. */
+    public getMeta(id: number) {
+        return this.storage.getMeta(id) as MetaType;
     }
 
-    public setMeta(id: number, value: MetaType): void {
+    /** Sets the metadata associated with the given ID, */
+    public setMeta(id: number, value: MetaType) {
         this.storage.setMeta(id, value);
     }
 
+    /** Returns the current write pointer of the underlying storage unit. */
     public writePointer(): number {
         return this.storage.writePointer();
     }
 
+    /** Creates a new element in the storage unit, registers the name-to-id mapping, and returns the newly allocated ID. */
     public push(name: string, value?: Partial<ElementType>, meta?: MetaType): number {
         const id = this.storage.add(value, meta);
         this.nameToIdMap.set(name, id);
@@ -43,6 +48,7 @@ export abstract class ResourceRegistry<ElementType, MetaType> {
         return id;
     }
 
+    /** Creates a new element in the storage unit whithout registering a name, and returns the newly allocated ID. */
     public add(value?: Partial<ElementType>, meta?: MetaType): number {
         return this.storage.add(value, meta);
     }

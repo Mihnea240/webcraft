@@ -1,17 +1,29 @@
 export enum Face {
-	RIGHT = 0, // +X face
-	TOP = 1, // +Y face	
-	FRONT = 2, // +Z face
-	BACK = 3, // -Z face
-	BOTTOM = 4, // -Y face
-	LEFT = 5, // -X face
+	/** +X face */
+	RIGHT = 0, 
+	/** +Y face */
+	TOP = 1, 
+	/** +Z face */
+	FRONT = 2, 
+	/** -Z face */
+	BACK = 3, 
+	/** -Y face */
+	BOTTOM = 4, 
+	/** -X face */
+	LEFT = 5, 
 
+	/** +X face */
 	EAST = 0,
-	WEST = 5,
-	SOUTH = 2,
-	NORTH = 3,
+	/** +Y face */
 	UP = 1,
-	DOWN = 4
+	/** +Z face */
+	SOUTH = 2,
+	/** -Z face */
+	NORTH = 3,
+	/** -Y face */
+	DOWN = 4,
+	/** -X faces */
+	WEST = 5,
 }
 
 export enum Facing {
@@ -41,14 +53,16 @@ export default class Faces {
 	static readonly FACING_WEST = Facing.WEST;
 	static readonly FACING_SOUTH = Facing.SOUTH;
 
-	static readonly face_string_array_cardinal: readonly string[] = [
-		"east", "up", "south", "north", "down", "west"
-	];
-	static readonly face_string_array: readonly string[] = [
-		"right", "top", "front", "back", "bottom", "left"
-	];
+	static Values = [Face.RIGHT, Face.TOP, Face.FRONT, Face.BACK, Face.BOTTOM, Face.LEFT];
 
-	static readonly to_vector: Record<Face, [number, number, number]> = {
+	static readonly Cardinal: readonly string[] = [
+		"east", "up", "south", "north", "down", "west"
+	] as const;
+	static readonly Directional: readonly string[] = [
+		"right", "top", "front", "back", "bottom", "left"
+	] as const;
+
+	static readonly Vector: Record<Face, [number, number, number]> = {
 		[Face.RIGHT]: [1, 0, 0],
 		[Face.LEFT]: [-1, 0, 0],
 		[Face.TOP]: [0, 1, 0],
@@ -61,7 +75,7 @@ export default class Faces {
 	 * Converts a face enum value to a 3D offset direction vector.
 	 */
 	static toVec3(face_enum: Face): [number, number, number] {
-		return Faces.to_vector[face_enum];
+		return Faces.Vector[face_enum];
 	}
 
 	/**
@@ -90,23 +104,23 @@ export default class Faces {
 	 * Parses a face string representation to its enum value.
 	 */
 	static fromString(face_string: string): Face | -1 {
-		const id_1 = Faces.face_string_array.indexOf(face_string);
+		const id_1 = Faces.Directional.indexOf(face_string);
 		if (id_1 !== -1) return id_1 as Face;
-		const id_2 = Faces.face_string_array_cardinal.indexOf(face_string);
+		const id_2 = Faces.Cardinal.indexOf(face_string);
 		if (id_2 !== -1) return id_2 as Face;
 		return -1;
 	}
 
-	static horizontalOrder = [Face.EAST, Face.SOUTH, Face.WEST, Face.NORTH];
+	static Horizontal = [Face.EAST, Face.SOUTH, Face.WEST, Face.NORTH];
 	/**
 	 * Rotates a face around the Y-axis based on the looking direction.
 	 */
 	static rotated(face: Face, lookDirection: Facing): Face {
 		if (face === Face.TOP || face === Face.BOTTOM) return face;
 		
-		const index = Faces.horizontalOrder.indexOf(face);
-		const rotatedIndex = (index + lookDirection) % Faces.horizontalOrder.length;
+		const index = Faces.Horizontal.indexOf(face);
+		const rotatedIndex = (index + lookDirection) % Faces.Horizontal.length;
 		
-		return Faces.horizontalOrder[rotatedIndex];
+		return Faces.Horizontal[rotatedIndex];
 	}
 }

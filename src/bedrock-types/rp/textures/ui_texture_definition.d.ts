@@ -3,8 +3,8 @@
 /**
  * The file that specifies either 9slice texture or Aseprite flipbook.
  */
-export type UITextureFile = SliceTextureFile | AsepriteFlipbookFile;
-export type SliceOffsets = number | [number, number, number, number];
+export type UITextureFile = Type9SliceTextureFile | AsepriteFlipbookFile;
+export type Type9SliceOffsets = number | [number, number, number, number];
 /**
  * Width and height of the texture (in this exact order).
  *
@@ -44,8 +44,8 @@ export type Frames = Frame[];
 /**
  * The file that specifies 9Slice textures.
  */
-export interface SliceTextureFile {
-  nineslice_size?: SliceOffsets;
+export interface Type9SliceTextureFile {
+  nineslice_size?: Type9SliceOffsets;
   base_size?: SizeOfTheTexture;
 }
 /**
