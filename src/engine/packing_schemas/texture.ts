@@ -14,5 +14,5 @@ export const TextureStruct = new Struct({
     a_speed: new Uint8(),
     
     blend_frames: new Bit(1),
-    tint_method: new Bit(7),
+    padding: new Bit(7),
 });

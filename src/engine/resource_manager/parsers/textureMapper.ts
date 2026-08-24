@@ -384,7 +384,7 @@ export class TextureMapper {
         if (config?.tint_color) {
             imageWithTint(data, width, height, colorFromHex(config.tint_color));
         } else if (config?.overlay_color) {
-            imageWithOverlay(data, width, height, colorFromHex(config.overlay_color));
+            imageWithOverlay(data, width, height, colorFromHex(config.overlay_color as any));
         }
 
         if (config?.frames) {

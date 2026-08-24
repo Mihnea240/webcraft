@@ -9,7 +9,7 @@ const FaceUVStruct = new Struct({
 });
 
 export const CubeStruct = new Struct({
-    // --- Geometry & Scale (17 Bytes) ---
+    // --- Geometry & Scale (16 Bytes) ---
     rotation: QuaternionStruct,
     offset: new ArrayType(new Float16(), 3),
     scale: new ArrayType(new Float16(), 3),
@@ -23,12 +23,12 @@ export const CubeStruct = new Struct({
 
     // --- Move the cube faces along the normal direction (1 Byte) ---
     inset: new Uint8(),
+    //free 5 bytes
 
-    random_offset_index: new Bit(8),
-    n_way_x: new Bit(4),
-    n_way_y: new Bit(4),
-    n_way_z: new Bit(4),
-    flags: new Bit(4),
+    // random_offset_index: new Bit(8),
+    // n_way_x: new Bit(4),
+    // n_way_y: new Bit(4),
+    // n_way_z: new Bit(4),
 
-    // bone_id: new Bit(16),
-});    
+    // bone_id: new Bit(16), // There are too many levels of indirection
+});
