@@ -1,4 +1,4 @@
-/* Auto-generated from Blockception Bedrock Schemas */
+/* Auto-generated from Blockception Bedrock Schemas: resource */
 
 /**
  * Specifying another block sound they should use sounds for if they do not define a sound themselves

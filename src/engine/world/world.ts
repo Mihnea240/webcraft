@@ -7,10 +7,13 @@ import { Player } from "@engine/player";
 import * as THREE from "three/webgpu";
 
 import * as Constants from "@engine/resource_manager/constants";
+import { ChunkManager } from "./chunkManager";
 
 export class World {
 	playerRegistry = new PlayerRegistry();
 	sceneManager = new SceneManager();
+	chunkManager = new ChunkManager();
+
 	public resourcePack!: ResourcePack;
 	private lastTime = 0;
 

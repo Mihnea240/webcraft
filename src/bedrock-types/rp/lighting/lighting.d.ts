@@ -1,4 +1,4 @@
-/* Auto-generated from Blockception Bedrock Schemas */
+/* Auto-generated from Blockception Bedrock Schemas: resource */
 
 /**
  * A version that tells minecraft what type of data format can be expected when reading this file.

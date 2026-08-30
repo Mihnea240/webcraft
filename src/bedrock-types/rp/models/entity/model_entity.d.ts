@@ -1,4 +1,4 @@
-/* Auto-generated from Blockception Bedrock Schemas */
+/* Auto-generated from Blockception Bedrock Schemas: resource */
 
 /**
  * This interface was referenced by `BlockceptionMinecraftResourceModel`'s JSON-Schema

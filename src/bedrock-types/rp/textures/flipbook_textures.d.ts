@@ -1,4 +1,4 @@
-/* Auto-generated from Blockception Bedrock Schemas */
+/* Auto-generated from Blockception Bedrock Schemas: resource */
 
 /**
  * The index of the texture array inside the definition of that shortname.

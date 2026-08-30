@@ -348,7 +348,7 @@ export class TextureMapper {
 
     addTile(config: ImageConfig): number {
         const name = config.textureRegistryName ?? config.path;
-        const existingId = this.blockTextureRegistry.nameToId(name);
+        const existingId = this.blockTextureRegistry.keyToId(name);
         if (existingId !== undefined) {
             return existingId;
         }

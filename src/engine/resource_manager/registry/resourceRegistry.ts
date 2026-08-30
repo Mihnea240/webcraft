@@ -1,12 +1,11 @@
 import { StorageUnit } from "../memory_management/storageUnit";
 
-export abstract class ResourceRegistry<ElementType, MetaType> {
-    protected readonly nameToIdMap = new Map<string, number>();
-    protected readonly idToNameMap = new Map<number, string>();
+export abstract class ResourceRegistry<ElementType, MetaType = void, KeyType = string> {
+    protected readonly keyToIdMap = new Map<KeyType, number>();
 
     public storage: StorageUnit<ElementType, MetaType>;
 
-    constructor(public parent?: ResourceRegistry<ElementType, MetaType>) {
+    constructor(public parent?: ResourceRegistry<ElementType, MetaType, KeyType>) {
         if (parent) {
             this.storage = parent.storage;
         } else { 
@@ -40,41 +39,55 @@ export abstract class ResourceRegistry<ElementType, MetaType> {
         return this.storage.writePointer();
     }
 
-    /** Creates a new element in the storage unit, registers the name-to-id mapping, and returns the newly allocated ID. */
-    public push(name: string, value?: Partial<ElementType>, meta?: MetaType): number {
+    /** Creates a new element in the storage unit, registers the key-to-id mapping, and returns the newly allocated ID. */
+    public push(key: KeyType, value?: Partial<ElementType>, meta?: MetaType): number {
         const id = this.storage.add(value, meta);
-        this.nameToIdMap.set(name, id);
-        this.idToNameMap.set(id, name);
+        this.keyToIdMap.set(key, id);
         return id;
     }
 
-    /** Creates a new element in the storage unit whithout registering a name, and returns the newly allocated ID. */
+    /** Creates a new element in the storage unit whithout registering a key, and returns the newly allocated ID. */
     public add(value?: Partial<ElementType>, meta?: MetaType): number {
         return this.storage.add(value, meta);
     }
 
+    /** Clones an existing element+metadata pair into a new slot and returns its new ID. */
+    public addClone(id: number): number {
+        const value = this.storage.get(id);
+        const meta = this.storage.getMeta(id);
+        return this.add(value as Partial<ElementType> | undefined, meta);
+    }
+
+    /** Clones an existing element, registers it under a new key, and returns the new ID. */
+    public pushClone(key: KeyType, id: number): number {
+        const newId = this.addClone(id);
+        this.keyToIdMap.set(key, newId);
+        return newId;
+    }
+
     /**
      * Allocates a slot in the storage unit (without specifying an element value),
-     * registers the name-to-id mapping, and returns the newly allocated ID.
+     * registers the key-to-id mapping, and returns the newly allocated ID.
      * This avoids creating a value object when writing directly to buffer views.
      */
-    public register(name: string, meta?: MetaType): number {
+    public register(key: KeyType, meta?: MetaType): number {
         const id = this.storage.add(undefined, meta);
-        this.nameToIdMap.set(name, id);
-        this.idToNameMap.set(id, name);
+        this.keyToIdMap.set(key, id);
         return id;
     }
 
-    // --- Local & Cascading Name-ID Mappings ---
+    // --- Local & Cascading Key-ID Mappings ---
 
-    public nameToId(name: string): number | undefined {
-        const localId = this.nameToIdMap.get(name);
-        return localId !== undefined ? localId : this.parent?.nameToId(name);
+    public keyToId(key: KeyType): number | undefined {
+        const localId = this.keyToIdMap.get(key);
+        return localId !== undefined ? localId : this.parent?.keyToId(key);
     }
 
-    public idToName(id: number): string | undefined {
-        const localName = this.idToNameMap.get(id);
-        return localName !== undefined ? localName : this.parent?.idToName(id);
+    public idToKey(id: number): KeyType | undefined {
+        for (const [key, mappedId] of this.keyToIdMap) {
+            if (mappedId === id) return key;
+        }
+        return this.parent?.idToKey(id);
     }
 
     // --- Linked List Node Operations ---
@@ -82,13 +95,13 @@ export abstract class ResourceRegistry<ElementType, MetaType> {
     /**
      * Removes/bypasses a specific registry node from the parent lookup chain.
      */
-    public removeNode(node: ResourceRegistry<ElementType, MetaType>): void {
+    public removeNode(node: ResourceRegistry<ElementType, MetaType, KeyType>): void {
         if (this === node) {
             // Cannot remove ourselves directly from within ourselves
             return;
         }
 
-        let current: ResourceRegistry<ElementType, MetaType> | undefined = this;
+        let current: ResourceRegistry<ElementType, MetaType, KeyType> | undefined = this;
         while (current) {
             if (current.parent === node) {
                 current.parent = node.parent; // Bypass the deleted node
@@ -102,21 +115,19 @@ export abstract class ResourceRegistry<ElementType, MetaType> {
 
     public exportMetadata() {
         return {
-            mappings: Array.from(this.nameToIdMap.entries()),
+            mappings: Array.from(this.keyToIdMap.entries()),
             storageMetadata: this.storage.exportMetadata()
         };
     }
 
     public importMetadata(state: {
-        mappings: [string, number][];
+        mappings: [KeyType, number][];
         storageMetadata: any;
     }): void {
         this.storage.importMetadata(state.storageMetadata);
-        this.nameToIdMap.clear();
-        this.idToNameMap.clear();
-        for (const [name, id] of state.mappings) {
-            this.nameToIdMap.set(name, id);
-            this.idToNameMap.set(id, name);
+        this.keyToIdMap.clear();
+        for (const [key, id] of state.mappings) {
+            this.keyToIdMap.set(key, id);
         }
     }
 
@@ -139,6 +150,6 @@ export abstract class ResourceRegistry<ElementType, MetaType> {
     abstract createStorageUnit(): StorageUnit<ElementType, MetaType>;
 
     get size(): number {
-        return this.nameToIdMap.size;
+        return this.keyToIdMap.size;
     }
 }

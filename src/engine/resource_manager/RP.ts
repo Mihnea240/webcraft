@@ -1,10 +1,9 @@
 import { extractHeaders, fileToJson, ZipFileEntry } from '@engine/utils/decoders';
 import { AtlasRegistry } from './registry/atlasRegistry';
 import { AtlasTileRegistry } from './registry/atlasTileRegistry';
-import { CubeGeometryRegistry } from './registry/cubeGeometryRegistry';
 import { BlockModelRegistry } from './registry/blockModelRegistry';
 import { BlockTextureRegistry } from "./registry/blockTextureRegistry";
-import { ResourceRegistry } from './registry/resourceRegistry';
+import { CubeGeometryRegistry } from './registry/cubeGeometryRegistry';
 import { WorkerEventType } from './worker/workerDataProtocol';
 import { WorkerEntryPoint } from './workerEntryPoint';
 
@@ -14,6 +13,8 @@ export interface ResourcePackData {
     description: string;
 }
 
+export type RegistryConstructor<T = any> = new (...args: any[]) => T;
+
 export class ResourcePack {
     private fileMap: Map<string, ZipFileEntry> = new Map();
     private zipBuffer!: ArrayBuffer;
@@ -22,7 +23,7 @@ export class ResourcePack {
     public metadata!: ResourcePackData;
 
     // Store registries keyed by their Class Constructor type
-    public readonly registries = new Map<new (parent?: any) => ResourceRegistry<any, any>, ResourceRegistry<any, any>>();
+    public readonly registries = new Map<RegistryConstructor, any>();
 
     constructor(public packUrl: string) {}
 
@@ -30,7 +31,7 @@ export class ResourcePack {
      * Retrieve a registry dynamically by its class type.
      * Fully type-safe and autocompleted at compile time.
      */
-    public get<T extends ResourceRegistry<any, any>>(ctor: new (parent?: any) => T): T {
+    public get<T>(ctor: RegistryConstructor<T>): T {
         const registry = this.registries.get(ctor);
         if (!registry) {
             throw new Error(`Registry "${ctor.name}" not found in pack`);

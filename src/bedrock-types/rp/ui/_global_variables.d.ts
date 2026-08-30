@@ -1,4 +1,4 @@
-/* Auto-generated from Blockception Bedrock Schemas */
+/* Auto-generated from Blockception Bedrock Schemas: resource */
 
 export type GlobalVariable = unknown[] | boolean | number | string;
 

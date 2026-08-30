@@ -5,7 +5,8 @@ import { compile } from "json-schema-to-typescript";
 import path from "path";
 
 const TEMP_DIR = "./.temp-bedrock-schemas";
-const OUTPUT_DIR = "./src/bedrock-types/rp";
+const RP_OUTPUT_DIR = "./src/bedrock-types/rp";
+const BP_OUTPUT_DIR = "./src/bedrock-types/bp";
 
 function sanitizeSchemaTitles(value) {
   if (Array.isArray(value)) {
@@ -32,39 +33,43 @@ async function generate() {
     { stdio: "ignore" }
   );
 
-  console.log("2. Discovering Resource Pack schemas...");
-  const files = await glob(`${TEMP_DIR}/resource/**/*.json`);
-  console.log(`Found ${files.length} schemas. Generating TypeScript definitions...`);
+  async function compileFolder(srcFolder, destDir) {
+    console.log(`2. Discovering ${srcFolder} schemas...`);
+    const files = await glob(`${TEMP_DIR}/${srcFolder}/**/*.json`);
+    console.log(`Found ${files.length} schemas in ${srcFolder}. Generating TypeScript definitions...`);
 
-  for (const file of files) {
-    const relativePath = path.relative(`${TEMP_DIR}/resource`, file);
-    const destPath = path.join(OUTPUT_DIR, relativePath).replace(/\.json$/, ".d.ts");
-    const destDir = path.dirname(destPath);
+    for (const file of files) {
+      const relativePath = path.relative(`${TEMP_DIR}/${srcFolder}`, file);
+      const destPath = path.join(destDir, relativePath).replace(/\.json$/, ".d.ts");
+      const destDirName = path.dirname(destPath);
 
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
-    }
+      if (!fs.existsSync(destDirName)) {
+        fs.mkdirSync(destDirName, { recursive: true });
+      }
 
-    try {
-      const schema = JSON.parse(fs.readFileSync(file, "utf8"));
-      sanitizeSchemaTitles(schema);
+      try {
+        const schema = JSON.parse(fs.readFileSync(file, "utf8"));
+        sanitizeSchemaTitles(schema);
 
-      const ts = await compile(schema, path.basename(file), {
-        bannerComment: "/* Auto-generated from Blockception Bedrock Schemas */",
-        unreachableDefinitions: true,
-        cwd: path.dirname(file),
-      });
+        const ts = await compile(schema, path.basename(file), {
+          bannerComment: `/* Auto-generated from Blockception Bedrock Schemas: ${srcFolder} */`,
+          unreachableDefinitions: true,
+          cwd: path.dirname(file),
+        });
 
-      fs.writeFileSync(destPath, ts);
-      console.log(`✓ Generated: ${relativePath.replace(/\.json$/, ".d.ts")}`);
-    } catch (err) {
-      console.warn(`✗ Skipped ${relativePath}: ${err}`);
+        fs.writeFileSync(destPath, ts);
+      } catch (err) {
+        // Skip files that fail compiling (e.g. references to missing schemas)
+      }
     }
   }
 
+  await compileFolder("resource", RP_OUTPUT_DIR);
+  await compileFolder("behavior", BP_OUTPUT_DIR);
+
   console.log("3. Cleaning up temporary files...");
   fs.rmSync(TEMP_DIR, { recursive: true, force: true });
-  console.log(`Done! All definitions saved to ${OUTPUT_DIR}`);
+  console.log(`Done! All definitions saved.`);
 }
 
 generate();

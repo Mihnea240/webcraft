@@ -1,4 +1,4 @@
-/* Auto-generated from Blockception Bedrock Schemas */
+/* Auto-generated from Blockception Bedrock Schemas: resource */
 
 /**
  * Sets the number of mipmap levels for reducing texture quality at varying distances. More mipmap levels means reduced texture quality at farther distances.
