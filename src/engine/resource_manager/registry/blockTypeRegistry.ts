@@ -1,6 +1,6 @@
-import { ComponentConstructor } from "@engine/block/blockType/componentRegistry";
-import { BlockComponent } from "@engine/block/blockType/components/base";
-import { BlockType } from "@engine/block/blockType/type";
+import { ComponentConstructor } from "@engine/block/componentRegistry";
+import { BlockComponent } from "@engine/block/components/base";
+import { BlockType } from "@engine/block/type";
 import { ArrayStorageUnit } from "../memory_management";
 import { ResourceRegistry } from "./resourceRegistry";
 

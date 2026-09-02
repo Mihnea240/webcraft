@@ -24,7 +24,7 @@
     "src/**/*.ts",
     "demo/**/*.ts",
     "src/bedrock-types/**/*.d.ts"
-  ],
+,     "src/engine/rendering"  ],
   "exclude": [
     "node_modules",
     "archive",

@@ -14,10 +14,7 @@ export class WorkerEntryPoint {
      * Retrieves the single persistent WorkerEntryPoint instance
      */
     public static getInstance(): WorkerEntryPoint {
-        if (!this.instance) {
-            this.instance = new WorkerEntryPoint();
-        }
-        return this.instance;
+        return this.instance ??= new WorkerEntryPoint();
     }
 
     /**

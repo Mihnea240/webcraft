@@ -3,9 +3,12 @@ import { AtlasRegistry } from './registry/atlasRegistry';
 import { AtlasTileRegistry } from './registry/atlasTileRegistry';
 import { BlockModelRegistry } from './registry/blockModelRegistry';
 import { BlockTextureRegistry } from "./registry/blockTextureRegistry";
+import { BlockPermutationRegistry, BlockTypeRegistry } from './registry/blockTypeRegistry';
 import { CubeGeometryRegistry } from './registry/cubeGeometryRegistry';
 import { WorkerEventType } from './worker/workerDataProtocol';
 import { WorkerEntryPoint } from './workerEntryPoint';
+
+ import { BlockMapper } from './parsers/blockMapper';
 
 export interface ResourcePackData {
     name: string;
@@ -45,6 +48,8 @@ export class ResourcePack {
         this.registries.set(AtlasRegistry, new AtlasRegistry());
         this.registries.set(CubeGeometryRegistry, new CubeGeometryRegistry());
         this.registries.set(BlockModelRegistry, new BlockModelRegistry());
+        this.registries.set(BlockTypeRegistry, new BlockTypeRegistry());
+        this.registries.set(BlockPermutationRegistry, new BlockPermutationRegistry());
     }
 
     linkedClone(newUrl: string): ResourcePack {
@@ -98,14 +103,41 @@ export class ResourcePack {
         this.fileMap = extractHeaders(this.zipBuffer);
 
         await this.extractMetadata();
-        await this.parseBlockDefinitions();
-        await this.parseTerrainTextures();
+
+        // 1. Eagerly pull block JSONs into memory before transferring zipBuffer
+        const blockMapper = new BlockMapper(
+            this.zipBuffer,
+            this.fileMap,
+            this.get(BlockTypeRegistry),
+            this.get(BlockPermutationRegistry)
+        );
+
+        // 2. Transfer zipBuffer to worker to parse textures, atlases, and models
+        const assetsPromise = this.parseAssets();
+
+        // 3. Concurrently parse block definitions on the main thread
+        blockMapper.parse();
+
+        // 4. Await worker completion and payload unpack
+        await assetsPromise;
+
+        // 5. Marry block definitions to textures and models
+        const typeRegistry = this.get(BlockTypeRegistry);
+        typeRegistry.bindToRp(this);
     }
 
     private async extractMetadata() {
-        const manifestFile = this.fileMap.get('manifest.json');
+        const manifestFile = this.fileMap.get('rp/manifest.json')
+            || this.fileMap.get('resource_pack/manifest.json')
+            || this.fileMap.get('manifest.json');
+
         if (!manifestFile) {
-            throw new Error("Resource pack is missing manifest.json");
+            this.metadata = {
+                name: "Unnamed Pack",
+                version: "1.0.0",
+                description: ""
+            };
+            return;
         }
 
         const manifestJson = await fileToJson(this.zipBuffer, manifestFile);
@@ -116,23 +148,16 @@ export class ResourcePack {
         };
     }
 
-    private async parseBlockDefinitions() {
-        
-    }
-
-    private async parseTerrainTextures() {
-        const file = this.fileMap.get("textures/terrain_texture.json");
-        if (!file) {
-            return;
-        }
-
+    private async parseAssets() {
         const entryPoint = WorkerEntryPoint.getInstance();
 
         // Map constructors to the string keys expected by the worker protocol
         const registries = {
             blockTextures: this.get(BlockTextureRegistry),
             atlasTiles: this.get(AtlasTileRegistry),
-            atlasLayers: this.get(AtlasRegistry)
+            atlasLayers: this.get(AtlasRegistry),
+            cubeGeometries: this.get(CubeGeometryRegistry),
+            blockModels: this.get(BlockModelRegistry)
         };
 
         const payload = entryPoint.preparePayload(registries);

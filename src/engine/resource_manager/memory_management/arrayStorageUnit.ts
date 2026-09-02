@@ -45,7 +45,23 @@ export class ArrayStorageUnit<ElementType, MetaType> implements StorageUnit<Elem
         return id;
     }
 
-    // --- Export / Import Protocol for Registry Serialization ---
+    public remove(id: number): void {
+        if (id < 0 || id >= this.data.length) return;
+
+        const lastId = this.data.length - 1;
+
+        if (id < lastId) {
+            this.data[id] = this.data[lastId];
+            if (this.useMetadata) {
+                this.metadata[id] = this.metadata[lastId];
+            }
+        }
+
+        this.data.pop();
+        if (this.useMetadata) {
+            this.metadata.pop();
+        }
+    }
 
     public exportMetadata() {
         return {

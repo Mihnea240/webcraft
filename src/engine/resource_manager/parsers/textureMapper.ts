@@ -1,7 +1,6 @@
 import { AtlasBuilder } from "@engine/utils/atlasBuilder";
-import { extractFromImageFile, extractHeaders, fileToJson, ZipFileEntry } from "@engine/utils/decoders";
+import { extractFromImageFile, fileToJson, ZipFileEntry } from "@engine/utils/decoders";
 import { AtlasRegistry, AtlasTileRegistry, BlockTextureRegistry } from "../registry";
-import { WorkerRequest } from "../worker/workerDataProtocol";
 
 import * as Constants from "../constants";
 
@@ -105,44 +104,23 @@ class TerrainParser {
 
 export class TextureMapper {
 
-    headers: Map<string, ZipFileEntry>;
     terrainTextureJson!: TerrainTextureFile;
     flipbookTextureJson!: FlipbookTextureFile;
-
 
     colorAtlasBuilder!: AtlasBuilder;
     mersAtlasBuilder!: AtlasBuilder;
 
-    blockTextureRegistry!: BlockTextureRegistry;
-    atlasRegistry!: AtlasRegistry;
-    atlasTileRegistry!: AtlasTileRegistry;
-
     public fallbackTextureId!: number;
     terrainParser!: TerrainParser;
 
-    constructor(private workerRequest: WorkerRequest, public useMers: boolean = false) {
-        this.headers = extractHeaders(workerRequest.zipBuffer);
-
-        this.blockTextureRegistry = new BlockTextureRegistry();
-        this.atlasRegistry = new AtlasRegistry();
-        this.atlasTileRegistry = new AtlasTileRegistry();
-
-        const registries = {
-            blockTextures: this.blockTextureRegistry,
-            atlasTiles: this.atlasTileRegistry,
-            atlasLayers: this.atlasRegistry
-        };
-
-        let bufferIndex = 0;
-        for (const [key, registry] of Object.entries(registries)) {
-            const count = workerRequest.bufferCounts[key] || 0;
-            const registryBuffers = workerRequest.buffers.slice(bufferIndex, bufferIndex + count);
-            bufferIndex += count;
-
-            registry.importMetadata(workerRequest.metadata[key]);
-            registry.importBuffers(registryBuffers);
-        }
-    }
+    constructor(
+        public zipBuffer: ArrayBuffer,
+        public headers: Map<string, ZipFileEntry>,
+        public blockTextureRegistry: BlockTextureRegistry,
+        public atlasTileRegistry: AtlasTileRegistry,
+        public atlasRegistry: AtlasRegistry,
+        public useMers: boolean = false
+    ) {}
 
     initAtlasBuilders(atlasBuffer: ArrayBuffer, padding: number) {
         const [width, height] = Constants.ATLAS_DIMENSIONS;
@@ -164,30 +142,33 @@ export class TextureMapper {
     }
 
     searchForTextureSet(path: string) {
-        const textureSet = path + ".texture_set.json";
-        const textureSetFile = this.headers.get(textureSet);
-
-        if (textureSetFile) {
-            return textureSetFile;
+        const candidatePaths = [path, `rp/${path}`, `resource_pack/${path}`];
+        for (const candidate of candidatePaths) {
+            const textureSetJsonFile = this.headers.get(candidate + ".texture_set.json");
+            if (textureSetJsonFile) {
+                return textureSetJsonFile;
+            }
         }
-
         return undefined;
     }
 
     searchForTexture(path: string) {
-        const texturePngFile = this.headers.get(path + ".png");
-        if (texturePngFile) {
-            return texturePngFile;
-        }
+        const candidatePaths = [path, `rp/${path}`, `resource_pack/${path}`];
+        for (const candidate of candidatePaths) {
+            const texturePngFile = this.headers.get(candidate + ".png");
+            if (texturePngFile) {
+                return texturePngFile;
+            }
 
-        const textureTgaFile = this.headers.get(path + ".tga");
-        if (textureTgaFile) {
-            return textureTgaFile;
-        }
+            const textureTgaFile = this.headers.get(candidate + ".tga");
+            if (textureTgaFile) {
+                return textureTgaFile;
+            }
 
-        const textureJpgFile = this.headers.get(path + ".jpg");
-        if (textureJpgFile) {
-            return textureJpgFile;
+            const textureJpgFile = this.headers.get(candidate + ".jpg");
+            if (textureJpgFile) {
+                return textureJpgFile;
+            }
         }
 
         return undefined;
@@ -196,7 +177,7 @@ export class TextureMapper {
     extractTextureFile(path: string): TextureSetResult {
         const textureSet = this.searchForTextureSet(path);
         if (textureSet && this.useMers) {
-            const textureSetJson = fileToJson(this.workerRequest.zipBuffer, textureSet);
+            const textureSetJson = fileToJson(this.zipBuffer, textureSet);
             const { color, metalness_emissive_roughness_subsurface } = textureSetJson["minecraft:texture_set"];
 
             const colorPath = path.replace(/[^/]+$/, color);
@@ -209,8 +190,8 @@ export class TextureMapper {
             }
 
             const result: TextureSetResult = {
-                colorTexture: extractFromImageFile(this.workerRequest.zipBuffer, colorTexture),
-                mersTexture: mersTexture ? extractFromImageFile(this.workerRequest.zipBuffer, mersTexture) : undefined
+                colorTexture: extractFromImageFile(this.zipBuffer, colorTexture),
+                mersTexture: mersTexture ? extractFromImageFile(this.zipBuffer, mersTexture) : undefined
             };
 
             return result;
@@ -219,7 +200,7 @@ export class TextureMapper {
         const texture = this.searchForTexture(path);
         if (texture) {
             return {
-                colorTexture: extractFromImageFile(this.workerRequest.zipBuffer, texture),
+                colorTexture: extractFromImageFile(this.zipBuffer, texture),
             } as TextureSetResult;
         }
 
@@ -227,22 +208,34 @@ export class TextureMapper {
     }
 
     parse() {
-        //Extract terrain texture json
-        const terrainTextureFile = this.headers.get("textures/terrain_texture.json")!;
-        this.terrainTextureJson = fileToJson(this.workerRequest.zipBuffer, terrainTextureFile);
+        // Extract terrain texture json
+        const terrainTextureFile = this.headers.get("rp/textures/terrain_texture.json")
+            || this.headers.get("resource_pack/textures/terrain_texture.json")
+            || this.headers.get("textures/terrain_texture.json");
+
+        if (!terrainTextureFile) {
+            return;
+        }
+
+        this.terrainTextureJson = fileToJson(this.zipBuffer, terrainTextureFile);
 
         this.initAtlasBuilders(this.atlasRegistry.atlasBuffer, this.terrainTextureJson.padding ?? 8);
         this.terrainParser = new TerrainParser(this.terrainTextureJson);
 
-        //Extract flipbook texture json
-        const flipbookTextureFile = this.headers.get("textures/flipbook_textures.json")!;
-        this.flipbookTextureJson = fileToJson(this.workerRequest.zipBuffer, flipbookTextureFile);
+        // Extract flipbook texture json
+        const flipbookTextureFile = this.headers.get("rp/textures/flipbook_textures.json")
+            || this.headers.get("resource_pack/textures/flipbook_textures.json")
+            || this.headers.get("textures/flipbook_textures.json");
 
-        for (const entry of this.flipbookTextureJson) {
-            try {
-                this.addFlipbookEntry(entry);
-            } catch (error) {
-                console.error("[Flipbook]", error);
+        if (flipbookTextureFile) {
+            this.flipbookTextureJson = fileToJson(this.zipBuffer, flipbookTextureFile);
+
+            for (const entry of this.flipbookTextureJson) {
+                try {
+                    this.addFlipbookEntry(entry);
+                } catch (error) {
+                    console.error("[Flipbook]", error);
+                }
             }
         }
 

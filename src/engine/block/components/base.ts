@@ -18,9 +18,7 @@ export abstract class BlockComponent{
         return null;
     }
 
-    bindToRp(blockType: BlockType, rp: ResourcePack) { 
-        
-    }
+    abstract bindToRp(blockType: BlockType, rp: ResourcePack);
 
     public static *getComponentsFromJson(json: Record<string, any>) {
         for (const [key, value] of Object.entries(json)) {

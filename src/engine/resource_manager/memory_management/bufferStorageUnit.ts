@@ -2,7 +2,7 @@ import { DataViewPacker, Struct } from "bitpacker";
 import { StorageUnit } from "./storageUnit";
 
 export class BufferStorageUnit<TSchema extends Struct<any>, MetaType> implements StorageUnit<any, MetaType> {
-    private buffer: ArrayBuffer;
+    private _buffer: ArrayBuffer;
     private packer: DataViewPacker<TSchema>;
     private readonly metadataTable: MetaType[] = [];
     
@@ -12,9 +12,13 @@ export class BufferStorageUnit<TSchema extends Struct<any>, MetaType> implements
 
     constructor(schema: TSchema, initialSize: number = 4096, public useMetadata: boolean = true) {
         this.elementStride = schema.stride;
-        this.buffer = new ArrayBuffer(initialSize * this.elementStride);
+        this._buffer = new ArrayBuffer(initialSize * this.elementStride);
         this.packer = new DataViewPacker(schema);
-        this.packer.setBuffer(this.buffer);
+        this.packer.setBuffer(this._buffer);
+    }
+
+    get buffer() { 
+        return this._buffer;
     }
 
     public get(id: number) {
@@ -50,13 +54,13 @@ export class BufferStorageUnit<TSchema extends Struct<any>, MetaType> implements
         this.allocatedLength++;
 
         const requiredBytes = this.allocatedLength * this.elementStride;
-        if (requiredBytes > this.buffer.byteLength) {
-            this.resizeBuffer(this.buffer.byteLength * 2);
+        if (requiredBytes > this._buffer.byteLength) {
+            this.resizeBuffer(this._buffer.byteLength * 2);
         }
 
         // Zero out the newly allocated slot in the buffer to guarantee clean defaults
         const byteOffset = id * this.elementStride;
-        new Uint8Array(this.buffer, byteOffset, this.elementStride).fill(0);
+        new Uint8Array(this._buffer, byteOffset, this.elementStride).fill(0);
 
         // Write packed binary struct data
         if (value !== undefined) {
@@ -72,15 +76,39 @@ export class BufferStorageUnit<TSchema extends Struct<any>, MetaType> implements
         return id;
     }
 
-    // --- Transferable Checkout/Return for Web Workers ---
+    public remove(id: number): void {
+        if (id < 0 || id >= this.allocatedLength) return;
+
+        const lastId = this.allocatedLength - 1;
+
+        if (id < lastId) {
+            // Swap last element byte slice into the deleted slot
+            const destOffset = id * this.elementStride;
+            const srcOffset = lastId * this.elementStride;
+
+            new Uint8Array(this._buffer, destOffset, this.elementStride).set(
+                new Uint8Array(this._buffer, srcOffset, this.elementStride)
+            );
+
+            if (this.useMetadata) {
+                this.metadataTable[id] = this.metadataTable[lastId];
+            }
+        }
+
+        if (this.useMetadata) {
+            this.metadataTable.pop();
+        }
+
+        this.allocatedLength--;
+    }
 
     public checkoutBuffer(): ArrayBuffer {
         this.isCheckedOut = true;
-        return this.buffer;
+        return this._buffer;
     }
 
     public importBuffer(returnedBuffer: ArrayBuffer, newLength: number) {
-        this.buffer = returnedBuffer;
+        this._buffer = returnedBuffer;
         this.packer.setBuffer(returnedBuffer);
         this.allocatedLength = newLength;
         this.isCheckedOut = false;
@@ -108,8 +136,8 @@ export class BufferStorageUnit<TSchema extends Struct<any>, MetaType> implements
 
     private resizeBuffer(newSize: number) {
         const newBuffer = new ArrayBuffer(newSize);
-        new Uint8Array(newBuffer).set(new Uint8Array(this.buffer));
-        this.buffer = newBuffer;
+        new Uint8Array(newBuffer).set(new Uint8Array(this._buffer));
+        this._buffer = newBuffer;
         this.packer.setBuffer(newBuffer);
     }
 }

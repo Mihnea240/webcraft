@@ -18,6 +18,9 @@ export interface StorageUnit<ElementType, MetaType> {
     // Add a new resource to the storage unit, returning its ID (supports partial elements)
     add(value?: Partial<ElementType>, meta?: MetaType): number;
 
+    // Removes a resource at the specified ID using swap-and-pop
+    remove(id: number): void;
+
     // Exports the internal metadata table (excluding raw binary buffers)
     exportMetadata(): {
         metadata: MetaType[];

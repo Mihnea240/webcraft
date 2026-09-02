@@ -1,4 +1,4 @@
-import { Bones, Cubes, Geometry } from "@bedrock-types/rp/models/entity/model_entity";
+import { Bones, Cubes } from "@bedrock-types/rp/models/entity/model_entity";
 import { BlockModel, BlockModelRegistry, CubeGeometryMetadata, CubeGeometryRegistry } from "../registry";
 
 import { InferCPUType } from "bitpacker";
@@ -6,6 +6,9 @@ import { CubeStruct } from "src/engine/packing_schemas/cube";
 import Faces, { Face } from "src/engine/utils/faces";
 import { packQuaternion } from "src/engine/utils/quaternion";
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
+
+import { fileToJson, ZipFileEntry } from "@engine/utils/decoders";
+import { Geometry } from "src/bedrock-types/bp/blocks/blocks";
 
 type Cube = Cubes[number] & { inset?: number };
 type CubeStruct = InferCPUType<typeof CubeStruct>;
@@ -24,12 +27,33 @@ export class GeometryMapper {
     angles = new Vector3();
     pivot = new Vector3();
 
+    models: Iterable<[string, Geometry]>;
+
     constructor(
+        public zipBuffer: ArrayBuffer,
+        public headers: Map<string, ZipFileEntry>,
         public cubeGeometryRegistry: CubeGeometryRegistry,
         public blockModelRegistry: BlockModelRegistry
     ) {
-
+        this.models = this.headers.entries()
+            .filter(([path]) => path.match(/^(?:resource_pack|rp|models)\/.*\.json$/))
+            .map<[string, Geometry]>(entry => [
+                entry[0].replace(/^(?:resource_pack\/models\/blocks|rp\/models\/blocks|models\/blocks|models)\//, ""),
+                fileToJson(zipBuffer, entry[1]!) as Geometry
+            ]).toArray();
     }
+
+
+    parse() {
+        for (const [name, geometry] of this.models) {
+            if (name === "__default.json") {
+                //Handel custom vannila blocks of which format is not determined yet
+                continue; 
+            }
+            this.parseBlockModel(geometry);
+        }
+    }
+
 
     parseBlockModel(models: Geometry) {
         const blockModel = new BlockModel();

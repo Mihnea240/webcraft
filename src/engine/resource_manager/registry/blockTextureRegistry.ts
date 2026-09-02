@@ -11,6 +11,8 @@ export type BlockTextureDescriptor = InferCPUType<typeof TextureStruct>;
  * Holds the local mappings and forwards descriptor storage operations to the GlobalStorage unit.
  */
 export class BlockTextureRegistry extends ResourceRegistry<BlockTextureDescriptor, any> {
+    declare public storage: BufferStorageUnit<typeof TextureStruct, any>;
+
     createStorageUnit(): BufferStorageUnit<typeof TextureStruct, any> {
         return new BufferStorageUnit(
             TextureStruct,

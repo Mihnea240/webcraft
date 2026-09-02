@@ -63,6 +63,10 @@ export class Array3D<T extends TypedArray = Uint16Array> {
 		return this.data[this.index(x, y, z)];
 	}
 
+	public getByIndex(index: number): number {
+		return this.data[index];
+	}
+
 	/**
 	 * Sets the value stored at coordinates (x, y, z).
 	 */
@@ -75,5 +79,58 @@ export class Array3D<T extends TypedArray = Uint16Array> {
 	 */
 	public fill(value: number): T {
 		return this.data.fill(value) as T;
+	}
+}
+
+
+export class Array3DShift<T extends TypedArray = Uint16Array> extends Array3D<T> {
+	private planeLog: number;
+
+	constructor(logX: number, logY: number = logX, logZ: number = logX) {
+		super(1 << logX, 1 << logY, 1 << logZ);
+
+		this.size = 1 << (logX + logY + logZ);
+		this.planeLog = logX + logZ;
+	}
+
+	override index(x: number, y: number, z: number) { 
+		return x | (z << this.x) | (y << (this.planeLog));
+	}
+}
+
+export class Array3DShift4 extends Array3DShift<Uint8Array> { 
+
+	override set(x: number, y: number, z: number, value: number): void {
+		const index = this.index(x, y, z);
+		const realIndex = index >> 1;
+
+		const data = this.data[realIndex];
+
+		if (index & 1) {
+			this.data[realIndex] = (data & 0x0F) | ((value & 0x0F) << 4);
+		} else {
+			this.data[realIndex] = (data & 0xF0) | (value & 0x0F);
+		}
+	}
+
+	override get(x: number, y: number, z: number): number {
+		return this.getByIndex(this.index(x, y, z));
+	}
+
+	override getByIndex(index: number): number {
+		const realIndex = index >> 1;
+
+		const data = this.data[realIndex];
+
+		if (index & 1) {
+			return (data & 0xF0) >> 4;
+		} else {
+			return data & 0x0F;
+		}
+	}
+
+	override fill(value: number): Uint8Array {
+		const packedValue = (value & 0x0F) | ((value & 0x0F) << 4);
+		return this.data.fill(packedValue);
 	}
 }
