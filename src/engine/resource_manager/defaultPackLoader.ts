@@ -1,7 +1,7 @@
 import { ResourcePack } from "./RP";
 
 // Instantiate the default pack pointing to rp.zip as requested
-export const defaultPack = new ResourcePack("/src/assets/rp_stripped.zip");
+export const defaultPack = new ResourcePack("/src/assets/addon.zip");
 defaultPack.default();
 
 // Cache the load promise to resolve asynchronously to any requesting worlds

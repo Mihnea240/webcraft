@@ -1,9 +1,14 @@
+import { BakedCube, BakedGeometry } from "@engine/block/bakedGeometry";
 import { ComponentConstructor } from "@engine/block/componentRegistry";
 import { BlockComponent } from "@engine/block/components/base";
+import { BlockGeometry } from "@engine/block/components/geometry";
+import { BlockMaterialInstances } from "@engine/block/components/materialInstances";
 import { BlockType } from "@engine/block/type";
 import { ArrayStorageUnit } from "../memory_management";
-import { ResourceRegistry } from "./resourceRegistry";
 import { ResourcePack } from "../RP";
+import { BlockModelRegistry } from "./blockModelRegistry";
+import { CubeGeometryRegistry } from "./cubeGeometryRegistry";
+import { ResourceRegistry } from "./resourceRegistry";
 
 /** 32-bit descriptor for a block type and its state:
  * High 16 bits: packed state bitfield
@@ -12,7 +17,13 @@ import { ResourcePack } from "../RP";
 export type BlockDescriptor = number;
 
 export class BlockPermutation {
-    constructor(public components: (BlockComponent | null)[]) {
+    constructor(
+        public components: (BlockComponent | null)[]
+    ) {
+    }
+
+    get bakedGeometry(): BakedGeometry | null {
+        return (this.components[0] as unknown as BakedGeometry) || null;
     }
 
     getComponentById(blockType: BlockType, id: number): BlockComponent | null {
@@ -37,7 +48,63 @@ export class BlockTypeRegistry extends ResourceRegistry<BlockType, void, string>
     }
 
     bindToRp(rp: ResourcePack) {
-        
+        const count = this.writePointer();
+        for (let id = 0; id < count; id++) {
+            const blockType = this.get(id);
+            if (!blockType) continue;
+
+            blockType.bindToRp(rp);
+        }
+
+        const permutationRegistry = rp.get(BlockPermutationRegistry);
+        permutationRegistry.bindToRp(rp);
+    }
+
+    public bakePermutation(
+        permutation: BlockPermutation,
+        blockType: BlockType,
+        rp: ResourcePack
+    ) {
+        const geometry = permutation.getComponent<BlockGeometry>(blockType, BlockGeometry);
+        const materials = permutation.getComponent<BlockMaterialInstances>(blockType, BlockMaterialInstances);
+
+        if (!geometry) {
+            permutation.components[0] = null;
+            return;
+        }
+
+        const modelRegistry = rp.get(BlockModelRegistry);
+        const cubeRegistry = rp.get(CubeGeometryRegistry);
+        const model = modelRegistry.get(geometry.modelId);
+
+        if (!model) {
+            permutation.components[0] = null;
+            return;
+        }
+
+        const bakedCubes: BakedCube[] = [];
+
+        for (let boneIdx = 0; boneIdx < model.boneData.length; boneIdx++) {
+            const bone = model.boneData[boneIdx];
+            for (let i = 0; i < bone.cubeCount; i++) {
+                const cubeId = bone.cubeStartId + i;
+                const faceMatNames = cubeRegistry.getMeta(cubeId) || ["*", "*", "*", "*", "*", "*"];
+                const faceTileIds: [number, number, number, number, number, number] = [0, 0, 0, 0, 0, 0];
+
+                for (let f = 0; f < 6; f++) {
+                    const matName = faceMatNames[f];
+                    let matId = materials?.nameToId.get(matName);
+                    if (matId === undefined) {
+                        matId = materials?.nameToId.get("*");
+                    }
+                    faceTileIds[f] = matId !== undefined ? (materials?.tiles[matId] ?? 0) : 0;
+                }
+
+                bakedCubes.push({ cubeId, boneIndex: boneIdx, faceTileIds });
+            }
+        }
+
+        permutation.components[0] = new BakedGeometry(bakedCubes) as any;
     }
 }
 
@@ -45,5 +112,33 @@ export class BlockTypeRegistry extends ResourceRegistry<BlockType, void, string>
 export class BlockPermutationRegistry extends ResourceRegistry<BlockPermutation, void, BlockDescriptor> {
     createStorageUnit() {
         return new ArrayStorageUnit<BlockPermutation, void>(4096, true);
+    }
+
+    public override get(descriptorOrId: BlockDescriptor): BlockPermutation {
+        const mappedId = this.keyToId(descriptorOrId);
+        const id = mappedId !== undefined ? mappedId : descriptorOrId;
+        return this.storage.get(id) as BlockPermutation;
+    }
+
+    public getByDescriptor(descriptor: BlockDescriptor): BlockPermutation | undefined {
+        const id = this.keyToId(descriptor);
+        return id !== undefined ? (this.storage.get(id) as BlockPermutation) : undefined;
+    }
+
+    public bindToRp(rp: ResourcePack) {
+        const blockTypeRegistry = rp.get(BlockTypeRegistry);
+        for (const [descriptor, id] of this.keyToIdMap) {
+            const permutation = this.storage.get(id);
+            if (!permutation) continue;
+
+            const blockType = blockTypeRegistry.getByDescriptor(descriptor);
+            if (!blockType) continue;
+
+            for (const comp of permutation.components) {
+                comp?.bindToRp(blockType, rp);
+            }
+
+            blockTypeRegistry.bakePermutation(permutation, blockType, rp);
+        }
     }
 }

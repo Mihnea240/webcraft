@@ -31,11 +31,11 @@ export interface TerrainShaderNodes {
 const quadOffset = uint(0); 
 const chunkOffset = uint(0);
 export const quadOffsetUniform = uniform(0, "uint").onObjectUpdate((frame) => {
-    return (frame.object as any).userData?.quadOffset ?? 0;
+    return frame.object!.userData?.quadOffset ?? 0;
 });
 
 export const chunkOffsetUniform = uniform(0, "uint").onObjectUpdate((frame) => {
-    return (frame.object as any).userData?.chunkOffset ?? 0;
+    return frame.object!.userData?.chunkOffset ?? 0;
 });
 
 /**
@@ -73,6 +73,7 @@ export function createTerrainMaterial(nodes: TerrainShaderNodes): Three.MeshBasi
         const offset = vec3(cubeView.offset[0], cubeView.offset[1], cubeView.offset[2]);
 
         const transformedVertex = applyQuaternion(quaternion, baseVertex.mul(scale)).add(offset);
+        const finalVertex = transformedVertex.add(blockLocalPosition);
 
         const u = float(textureView.atlas_u).mul(16.0 / Constants.ATLAS_DIMENSIONS[0]);
         const v = float(textureView.atlas_v).mul(16.0 / Constants.ATLAS_DIMENSIONS[1]);
@@ -83,7 +84,7 @@ export function createTerrainMaterial(nodes: TerrainShaderNodes): Three.MeshBasi
         const normal = applyQuaternion(quaternion, NORMALS_ARRAY.element(normalId));
         vNormal.assign(normal);
 
-        return vec4(transformedVertex, 1.0);
+        return vec4(finalVertex, 1.0);
     });
 
 

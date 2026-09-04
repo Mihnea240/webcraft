@@ -1,5 +1,5 @@
 import { Components } from "../componentEnum";
-import { componentRegistry } from "../type";
+import { componentRegistry } from "../componentRegistry";
 import { BlockComponent } from "./base";
 
 export class BlockLightEmission extends BlockComponent {

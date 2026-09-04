@@ -1,5 +1,6 @@
 import { States } from "src/bedrock-types/bp/blocks/blocks";
-import { BlockType, componentRegistry } from "../type";
+import { componentRegistry } from "../componentRegistry";
+import type { BlockType } from "../type";
 import { BlockComponent } from "./base";
 
 import { Bit, DataViewPacker, Struct } from "bitpacker";

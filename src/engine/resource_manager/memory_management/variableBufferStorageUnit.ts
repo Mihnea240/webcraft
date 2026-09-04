@@ -85,6 +85,11 @@ export class VariableBufferStorageUnit<T extends TypedArray, MetaType> implement
         return id;
     }
 
+    public remove(id: number): void {
+        // Variable-length stream buffers do not support in-place swap-and-pop removal
+        throw new Error("Removal is not supported on VariableBufferStorageUnit");
+    }
+
     // --- Transferable Checkout/Return for Web Workers ---
 
     public checkoutBuffer(): ArrayBuffer {

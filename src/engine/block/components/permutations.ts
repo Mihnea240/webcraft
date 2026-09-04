@@ -1,4 +1,5 @@
-import { BlockType, componentRegistry } from "../type";
+import { componentRegistry } from "../componentRegistry";
+import type { BlockType } from "../type";
 import { BlockComponent } from "./base";
 
 import { Permutations } from "@bedrock-types/bp/blocks/blocks";

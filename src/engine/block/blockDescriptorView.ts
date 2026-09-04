@@ -84,6 +84,7 @@ export class BlockDescriptorView {
             return RemeshFlags.None;
         }
 
+        this.typeRegistry.bakePermutation(newPermutation, blockType, this.context.resourcePack);
         this.permutationRegistry.push(newDescriptor, newPermutation);
         this.descriptor = newDescriptor;
 

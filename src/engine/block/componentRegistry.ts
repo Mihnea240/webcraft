@@ -1,5 +1,4 @@
-
-import { BlockComponent } from "./components/base";
+import type { BlockComponent } from "./components/base";
 
 export type ComponentConstructor<T extends BlockComponent = BlockComponent> = {
     new (...args: any[]): T;
@@ -10,7 +9,7 @@ export type ComponentConstructor<T extends BlockComponent = BlockComponent> = {
 export class ComponentRegistry {
     componentImplementations: Map<string, ComponentConstructor> = new Map();
     componentIds: Map<ComponentConstructor, number> = new Map();
-    componentCnt: number = 0;
+    componentCnt: number = 1; // Start at 1 to reserve ID/slot 0 for internal BakedGeometry
 
     registerImplementation(componentName: string, componentImplementation: ComponentConstructor) {
         this.componentImplementations.set(componentName, componentImplementation);
@@ -29,3 +28,5 @@ export class ComponentRegistry {
         return this.componentIds.get(componentImplementation) ?? (componentImplementation as any).id;
     }
 }
+
+export const componentRegistry = new ComponentRegistry();

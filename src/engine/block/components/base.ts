@@ -1,6 +1,7 @@
 import { ResourcePack } from "src/engine/resource_manager/RP";
 import { RemeshFlags } from "../blockDescriptorView";
-import { type BlockType, componentRegistry } from "../type";
+import { componentRegistry } from "../componentRegistry";
+import type { BlockType } from "../type";
 
 
 export abstract class BlockComponent{

@@ -1,5 +1,6 @@
 import { ResourcePack } from "src/engine/resource_manager/RP";
-import { BlockType, componentRegistry } from "../type";
+import { componentRegistry } from "../componentRegistry";
+import type { BlockType } from "../type";
 import { BlockComponent } from "./base";
 
 import { Geometry } from "@bedrock-types/bp/blocks/blocks";

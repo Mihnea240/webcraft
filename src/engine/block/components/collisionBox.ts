@@ -1,4 +1,4 @@
-import { componentRegistry } from "../type";
+import { componentRegistry } from "../componentRegistry";
 import { BlockComponent } from "./base";
 
 export class BlockCollisionBox extends BlockComponent {
