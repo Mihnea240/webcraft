@@ -12,3 +12,8 @@ export const MAX_TEXTURE_DESCRIPTOR_COUNT = 65536 * 2; // 65536 descriptors, 2 b
 //Quad limits
 export const INITIAL_QUAD_BUFFER_SIZE = 2_000_000 * 4; // 2 million quads, 4 u32s each
 export const QUAD_BUFFER_BLOCK_SIZE = 4096; //4096 or 256 quads units for the allocator
+
+//Chunk limits
+export const CHUNK_SIZE = 16;
+export const CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
+export const INITIAL_CHUNK_BUFFER_SIZE = 4096 * 4; // 4096 chunks, 4 u32s each

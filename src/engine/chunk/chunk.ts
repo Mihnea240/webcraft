@@ -6,6 +6,7 @@ import { BlockPallet } from "./pallet";
 export const enum ChunkState { 
     Empty = 0,
     Dirty = 1,
+    Meshed = 2,
 }
 
 const OFFSET_XZ = 0x80000;

@@ -8,7 +8,8 @@ import { CubeGeometryRegistry } from './registry/cubeGeometryRegistry';
 import { WorkerEventType } from './worker/workerDataProtocol';
 import { WorkerEntryPoint } from './workerEntryPoint';
 
- import { BlockMapper } from './parsers/blockMapper';
+import { BlockMapper } from './parsers/blockMapper';
+import { RenderPipeline } from '@engine/render/pipeline';
 
 export interface ResourcePackData {
     name: string;
@@ -24,6 +25,7 @@ export class ResourcePack {
     
     public parent?: ResourcePack;
     public metadata!: ResourcePackData;
+    public pipeline!: RenderPipeline;
 
     // Store registries keyed by their Class Constructor type
     public readonly registries = new Map<RegistryConstructor, any>();
@@ -50,11 +52,14 @@ export class ResourcePack {
         this.registries.set(BlockModelRegistry, new BlockModelRegistry());
         this.registries.set(BlockTypeRegistry, new BlockTypeRegistry());
         this.registries.set(BlockPermutationRegistry, new BlockPermutationRegistry());
+
+        this.pipeline = new RenderPipeline(this);
     }
 
     linkedClone(newUrl: string): ResourcePack {
         const clone = new ResourcePack(newUrl);
         clone.parent = this;
+        clone.pipeline = this.pipeline;
 
         // Clone each registry using its constructor type dynamically
         for (const [Ctor, registry] of this.registries.entries()) {

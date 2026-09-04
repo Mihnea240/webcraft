@@ -7,18 +7,24 @@ import { Player } from "@engine/player";
 import * as THREE from "three/webgpu";
 
 import * as Constants from "@engine/resource_manager/constants";
-import { ChunkManager } from "./chunkManager";
+import { ChunkManager } from "../chunk/chunkManager";
+import { BlockTypeRegistry } from "../resource_manager/registry/blockTypeRegistry";
 
 export class World {
 	playerRegistry = new PlayerRegistry();
 	sceneManager = new SceneManager();
-	chunkManager = new ChunkManager();
+	chunkManager: ChunkManager;
 
 	public resourcePack!: ResourcePack;
 	private lastTime = 0;
 
+	constructor() {
+		this.chunkManager = new ChunkManager(this);
+	}
+
 	setResourcePack(resourcePack: ResourcePack) {
 		this.resourcePack = resourcePack;
+		this.chunkManager.initMaterial();
 		this.init();
 	}
 
@@ -26,6 +32,11 @@ export class World {
 		const { scene, renderer } = this.sceneManager;
 		await renderer.init();
 		renderer.shadowMap.enabled = true;
+
+		// Pre-compile terrain shader in background while assets load
+		if (this.chunkManager.chunkMaterial && this.resourcePack?.pipeline) {
+			this.resourcePack.pipeline.precompile(renderer, this.chunkManager.chunkMaterial).catch(console.error);
+		}
 
 		// 1. Retrieve the compiled textures from AtlasRegistry
 		const atlasRegistry = this.resourcePack.get(AtlasRegistry);
@@ -117,4 +128,11 @@ export class World {
 		player.cleanup();
 		this.playerRegistry.removePlayer(player);
 	}
+}
+
+
+function testWorld(world: World) {
+	const typeRegistry = world.resourcePack.get(BlockTypeRegistry);
+
+	const stoneType = typeRegistry.get
 }

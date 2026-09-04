@@ -5,6 +5,7 @@ import { ResourceRegistry } from "./resourceRegistry";
 import { Chunk } from "src/engine/chunk";
 import { ChunkDataStruct } from "src/engine/packing_schemas";
 import { BlockAllocator } from "src/engine/utils/blockAllocator";
+import * as Three from "three/webgpu";
 
 import * as Constants from "../constants";
 
@@ -15,13 +16,16 @@ export interface ChunkMeshMetadata {
     quadOffset: number;
     /** Number of active quads to draw */
     quadCount: number;
+    chunk: Chunk;
+    mesh?: Three.Mesh;
+    geometry?: Three.BufferGeometry;
 }
 
 /**
  * World-scoped registry holding subchunk spatial GPU data (world positions, biomes)
  * and managing quad buffer slab allocations.
  */
-export class ChunkRegistry extends ResourceRegistry<ChunkDescriptor, ChunkMeshMetadata, number> {
+export class ChunkRenderRegistry extends ResourceRegistry<ChunkDescriptor, ChunkMeshMetadata, number> {
     declare public storage: BufferStorageUnit<typeof ChunkDataStruct, ChunkMeshMetadata>;
 
     public blockAllocator = new BlockAllocator(
@@ -58,7 +62,8 @@ export class ChunkRegistry extends ResourceRegistry<ChunkDescriptor, ChunkMeshMe
 
             chunkId = this.push(spatialKey, chunkData, {
                 quadOffset: blockStart * Constants.QUAD_BUFFER_BLOCK_SIZE / 16,
-                quadCount
+                quadCount,
+                chunk
             });
         } else {
             const meta = this.getMeta(chunkId);
@@ -87,11 +92,26 @@ export class ChunkRegistry extends ResourceRegistry<ChunkDescriptor, ChunkMeshMe
         }
 
         const meta = this.getMeta(chunkId);
+        if (meta.mesh) {
+            meta.mesh.removeFromParent();
+            meta.mesh = undefined;
+        }
+        if (meta.geometry) {
+            meta.geometry.dispose();
+            meta.geometry = undefined;
+        }
+
         const size = Math.ceil(meta.quadCount / Constants.QUAD_BUFFER_BLOCK_SIZE);
         this.blockAllocator.free(meta.quadOffset * 16 / Constants.QUAD_BUFFER_BLOCK_SIZE, size);
 
-        // Perform swap-and-pop on the registry
-        this.pop(chunkId);
+        const movedKey = this.pop(chunkId);
+        if (movedKey !== undefined) {
+            // A chunk was moved into slot chunkId from the end
+            const movedMeta = this.getMeta(chunkId);
+            if (movedMeta?.mesh) {
+                movedMeta.mesh.userData.chunkOffset = chunkId;
+            }
+        }
 
         return true;
     }

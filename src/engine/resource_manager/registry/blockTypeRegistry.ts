@@ -3,6 +3,7 @@ import { BlockComponent } from "@engine/block/components/base";
 import { BlockType } from "@engine/block/type";
 import { ArrayStorageUnit } from "../memory_management";
 import { ResourceRegistry } from "./resourceRegistry";
+import { ResourcePack } from "../RP";
 
 /** 32-bit descriptor for a block type and its state:
  * High 16 bits: packed state bitfield
@@ -33,6 +34,10 @@ export class BlockTypeRegistry extends ResourceRegistry<BlockType, void, string>
 
     getByDescriptor(descriptor: BlockDescriptor): BlockType | null {
         return this.get(descriptor & 0xFFFF);
+    }
+
+    bindToRp(rp: ResourcePack) {
+        
     }
 }
 
