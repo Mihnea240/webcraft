@@ -14,6 +14,7 @@ export class BufferStorageUnit<TSchema extends Struct<any>, MetaType> implements
         this.elementStride = schema.stride;
         this._buffer = new ArrayBuffer(initialSize * this.elementStride);
         this.packer = new DataViewPacker(schema);
+        this.packer = new DataViewPacker(schema, true, true);
         this.packer.setBuffer(this._buffer);
     }
 

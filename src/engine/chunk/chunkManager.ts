@@ -12,12 +12,17 @@ import { ChunkLoader } from "./chunkLoaders/base";
 import { ChunkMesher } from "./mesher";
 
 const TslQuadStruct = struct({
-    data: `array<u32, ${QuadStruct.stride / 4}>`,
+    data: `array<u32, ${QuadStruct.bucketStride}>`,
 }, "QuadStruct");
 
 const TslChunkDataStruct = struct({
-    data: `array<u32, ${ChunkDataStruct.stride / 4}>`,
+    data: `array<u32, ${ChunkDataStruct.bucketStride}>`,
 }, "ChunkDataStruct");
+
+const ChunkBoundingBox = new Three.Box3(
+    new Three.Vector3(0, 0, 0),
+    new Three.Vector3(Constants.CHUNK_SIZE, Constants.CHUNK_SIZE, Constants.CHUNK_SIZE)
+);
 
 export class ChunkManager { 
     chunkRegistry = new ChunkRenderRegistry();
@@ -33,18 +38,19 @@ export class ChunkManager {
     chunkMaterial!: Three.MeshBasicNodeMaterial;
 
     loadedChunks = new Map<number, Chunk>();
+    dirtyChunks = new Set<Chunk>();
     
     constructor(public world: World) {
 
         this.quadBuffer = new Three.StorageBufferAttribute(
-            new Uint32Array(Constants.INITIAL_QUAD_BUFFER_SIZE * QuadStruct.stride / 4),
-            QuadStruct.stride / 4
+            new Uint32Array(Constants.INITIAL_QUAD_BUFFER_SIZE * QuadStruct.bucketStride),
+            QuadStruct.bucketStride
         );
 
         this.chunkBuffer = new Three.StorageBufferAttribute(
-            // new Uint32Array(Constants.INITIAL_CHUNK_BUFFER_SIZE * ChunkDataStruct.stride / 4),
+            // new Uint32Array(Constants.INITIAL_CHUNK_BUFFER_SIZE * ChunkDataStruct.bucketStride),
             new Uint32Array(this.chunkRegistry.storage.buffer),
-            ChunkDataStruct.stride / 4
+            ChunkDataStruct.bucketStride
         );
 
         this.quadNode = new Three.StorageBufferNode(this.quadBuffer, TslQuadStruct);
@@ -55,7 +61,7 @@ export class ChunkManager {
 
     initMaterial() {
         this.chunkMaterial = new Three.MeshBasicNodeMaterial({
-            transparent: true,
+            transparent: false,
             wireframe: false,
         });
         
@@ -77,9 +83,7 @@ export class ChunkManager {
                 const meta = this.chunkRegistry.getMeta(chunkId);
                 if (meta?.mesh) {
                     meta.mesh.material = this.chunkMaterial;
-                }
-                if (meta?.geometry && !meta.geometry.index) {
-                    meta.geometry.setIndex(pipeline.indexBuffer);
+                    meta.geometry!.setIndex(pipeline.indexBuffer);
                 }
             }
         }
@@ -91,6 +95,10 @@ export class ChunkManager {
         return this.loadedChunks.get(hash);
     }
 
+    get(x: number, y: number, z: number): Chunk | undefined {
+        return this.getChunkAt(x, y, z);
+    }
+
     getWorldPositionChunk(x: number, y: number, z: number): Chunk | undefined {
         const chunkX = Math.floor(x / Constants.CHUNK_SIZE);
         const chunkY = Math.floor(y / Constants.CHUNK_SIZE);
@@ -99,74 +107,77 @@ export class ChunkManager {
         return this.getChunkAt(chunkX, chunkY, chunkZ);
     }
 
+    markDirty(chunk: Chunk) {
+        this.dirtyChunks.add(chunk);
+    }
+
     addChunk(chunk: Chunk) {
         const hash = chunk.getHash();
         this.loadedChunks.set(hash, chunk);
     }
 
     removeChunk(chunk: Chunk) {
+        this.dirtyChunks.delete(chunk);
         const hash = chunk.getHash();
         this.chunkRegistry.unregisterChunk(chunk);
         this.loadedChunks.delete(hash);
     }
 
-    meshChunks() {
+    meshChunks(budget?: number) {
+        if (this.dirtyChunks.size === 0) return;
+        console.log(`[ChunkManager] Meshing ${this.dirtyChunks.size} dirty chunks...`);
+
         const pipeline = this.world.resourcePack?.pipeline;
         const scene = this.world.sceneManager.scene;
         let meshedCount = 0;
 
-        for (const chunk of this.loadedChunks.values()) {
-            const dirty = chunk.status === ChunkState.Dirty;
-            
-            if (dirty) {
-                meshedCount++;
-                this.chunkMesher.setChunk(chunk);
-                const quadBuffer = this.chunkMesher.mesh();
+        for (const chunk of this.dirtyChunks) {
+            this.dirtyChunks.delete(chunk);
 
-                chunk.status = ChunkState.Meshed;
-                const size = quadBuffer.byteLength / QuadStruct.stride;
-                const chunkId =  this.chunkRegistry.registerChunk(chunk, size);
-                const meta = this.chunkRegistry.getMeta(chunkId);
+            if (chunk.status !== ChunkState.Dirty) {
+                continue;
+            }
 
-                this.quadBuffer.set(quadBuffer, meta.quadOffset * QuadStruct.stride / 4);
-                
-                this.quadBuffer.addUpdateRange(meta.quadOffset * QuadStruct.stride / 4, size * QuadStruct.stride / 4);
-                if (size > 0) {
-                    this.quadBuffer.set(quadBuffer, meta.quadOffset * QuadStruct.stride / 4);
-                    this.quadBuffer.addUpdateRange(meta.quadOffset * QuadStruct.stride / 4, size * QuadStruct.stride / 4);
-                }
-                this.chunkBuffer.addUpdateRange(chunkId * ChunkDataStruct.stride / 4, ChunkDataStruct.stride / 4);
+            meshedCount++;
+            this.chunkMesher.setChunk(chunk);
+            const quadBuffer = this.chunkMesher.mesh();
 
-                // Manage Three.Mesh and BufferGeometry via ChunkMeshMetadata
-                if (!meta.mesh) {
-                    const geometry = new Three.BufferGeometry();
-                    if (pipeline) {
-                        geometry.setIndex(pipeline.indexBuffer);
-                    }
-                    geometry.boundingBox = new Three.Box3(
-                        new Three.Vector3(0, 0, 0),
-                        new Three.Vector3(Constants.CHUNK_SIZE, Constants.CHUNK_SIZE, Constants.CHUNK_SIZE)
-                    );
+            chunk.status = ChunkState.Meshed;
+            const size = quadBuffer.length / QuadStruct.bucketStride;
+            const chunkId = this.chunkRegistry.registerChunk(chunk, size);
+            const meta = this.chunkRegistry.getMeta(chunkId);
 
-                    const mesh = new Three.Mesh(geometry, this.chunkMaterial);
-                    const [cx, cy, cz] = chunk.worldPosition;
-                    mesh.position.set(
-                        cx * Constants.CHUNK_SIZE,
-                        cy * Constants.CHUNK_SIZE,
-                        cz * Constants.CHUNK_SIZE
-                    );
+            if (size > 0) {
+                this.quadBuffer.set(quadBuffer, meta.quadOffset * QuadStruct.bucketStride);
+                this.quadBuffer.addUpdateRange(meta.quadOffset * QuadStruct.bucketStride, size * QuadStruct.bucketStride);
+            }
+            this.chunkBuffer.addUpdateRange(chunkId * ChunkDataStruct.bucketStride, ChunkDataStruct.bucketStride) ;
 
-                    meta.geometry = geometry;
-                    meta.mesh = mesh;
-                    scene.add(mesh);
-                } else if (meta.geometry && pipeline && !meta.geometry.index) {
-                    meta.geometry.setIndex(pipeline.indexBuffer);
-                }
+            // Manage Three.Mesh and BufferGeometry via ChunkMeshMetadata
+            if (!meta.mesh) {
+                const geometry = new Three.BufferGeometry();
+                geometry.setIndex(pipeline.indexBuffer);
+                geometry.boundingBox = ChunkBoundingBox;
 
-                meta.mesh.userData.quadOffset = meta.quadOffset;
-                meta.mesh.userData.chunkOffset = chunkId;
-                meta.geometry!.setDrawRange(0, size * 6);
-                meta.mesh.visible = size > 0;
+                const mesh = new Three.Mesh(geometry, this.chunkMaterial);
+                mesh.frustumCulled = false; 
+                const [cx, cy, cz] = chunk.worldPosition;
+                mesh.position.set(cx, cy, cz).multiplyScalar(Constants.CHUNK_SIZE);
+
+                meta.geometry = geometry;
+                meta.mesh = mesh;
+                scene.add(mesh);
+            } else {
+                meta.geometry!.setIndex(pipeline.indexBuffer);
+            }
+
+            meta.mesh.userData.quadOffset = meta.quadOffset;
+            meta.mesh.userData.chunkOffset = chunkId;
+            meta.geometry!.setDrawRange(0, size * 6);
+            meta.mesh.visible = size > 0;
+
+            if (budget !== undefined && meshedCount >= budget) {
+                break;
             }
         }
 

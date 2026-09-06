@@ -32,7 +32,8 @@ export class BlockPermutation {
     }
 
     getComponent<T extends BlockComponent>(blockType: BlockType, ctor: ComponentConstructor): T | null {
-        const index = blockType.getComponentIndexInComponentArray(ctor.id);
+        const ctorId = ctor.id;
+        const index = blockType.getComponentIndexInComponentArray(ctorId);
         return index !== -1 ? (this.components[index] as T | null) : null;
     }
 }
@@ -75,11 +76,13 @@ export class BlockTypeRegistry extends ResourceRegistry<BlockType, void, string>
 
         const modelRegistry = rp.get(BlockModelRegistry);
         const cubeRegistry = rp.get(CubeGeometryRegistry);
-        const model = modelRegistry.get(geometry.modelId);
+        let model = modelRegistry.get(geometry.modelId);
 
         if (!model) {
-            permutation.components[0] = null;
-            return;
+            model = modelRegistry.get(0);
+            if (!model) {
+                throw new Error(`Failed to bake permutation for ${blockType.description}: model not found for ${geometry.identifier} (modelId ${geometry.modelId})`);
+            }
         }
 
         const bakedCubes: BakedCube[] = [];
@@ -104,7 +107,7 @@ export class BlockTypeRegistry extends ResourceRegistry<BlockType, void, string>
             }
         }
 
-        permutation.components[0] = new BakedGeometry(bakedCubes) as any;
+        permutation.components[0] = new BakedGeometry(bakedCubes) as any; 
     }
 }
 

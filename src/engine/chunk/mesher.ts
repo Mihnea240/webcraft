@@ -12,7 +12,7 @@ export class ChunkMesher {
 
     private writePointer = 0;
     quadBuffer = new Uint32Array(Constants.INITIAL_QUAD_BUFFER_SIZE / 4);
-    packer = new DataViewPacker(QuadStruct);
+    packer = new DataViewPacker(QuadStruct, true, true);
 
     constructor() {
         this.packer.setBuffer(this.quadBuffer.buffer);
@@ -63,14 +63,14 @@ export class ChunkMesher {
                             const textureId = tileRegistry.getTextureId(tileId, 0, worldX, worldY, worldZ);
 
                             // Zero out the 4 uint32s for this quad before writing
-                            const u32Offset = this.writePointer * (QuadStruct.stride / 4);
+                            const u32Offset = this.writePointer * (QuadStruct.bucketStride);
                             this.quadBuffer[u32Offset] = 0;
                             this.quadBuffer[u32Offset + 1] = 0;
                             this.quadBuffer[u32Offset + 2] = 0;
                             this.quadBuffer[u32Offset + 3] = 0;
 
                             // Set byte offset and pack quad fields
-                            this.packer.byteOffset = this.writePointer * QuadStruct.stride;
+                            this.packer.byteOffset = u32Offset * 4;
                             const quadView = this.packer.view;
 
                             quadView.x = x;
@@ -86,12 +86,14 @@ export class ChunkMesher {
                 }
             }
         }
-
-        return new Uint32Array(
+        const buffer = new Uint32Array(
             this.quadBuffer.buffer,
             0,
-            this.writePointer * (QuadStruct.stride / 4)
+            this.writePointer * QuadStruct.bucketStride
         );
+
+        console.log(buffer);
+        return buffer;
     }
 
     unpackChunData() {

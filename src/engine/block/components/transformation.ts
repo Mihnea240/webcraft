@@ -1,16 +1,13 @@
-import { Components } from "../componentEnum";
 import { componentRegistry } from "../componentRegistry";
 import { BlockComponent } from "./base";
 
 export class BlockTransformation extends BlockComponent {
-    public static id = Components.Transformation;
     public translation: [number, number, number] = [0, 0, 0];
     public rotation: [number, number, number] = [0, 0, 0];
     public scale: [number, number, number] = [1, 1, 1];
     public pivot: [number, number, number] = [0, 0, 0];
 
-    constructor(json: any) {
-        super();
+    fromJson(json: any) {
         if (!json || typeof json !== "object") return;
 
         if (Array.isArray(json.translation)) {
@@ -26,6 +23,8 @@ export class BlockTransformation extends BlockComponent {
             this.pivot = json.rotation_pivot as [number, number, number];
         }
     }
+
+    bindToRp() {}
 }
 
 componentRegistry.registerImplementation("minecraft:transformation", BlockTransformation);

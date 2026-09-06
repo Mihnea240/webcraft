@@ -20,8 +20,13 @@ document.addEventListener("request-resource-pack", (e) => {
     console.log("[DefaultPackLoader] World requested default resource pack:", world);
     if (!world) return;
 
+    // 1. Assign pack immediately: triggers world.init() & pipeline.precompile() concurrently with worker
+    world.setResourcePack(defaultPack);
+    console.log("[DefaultPackLoader] Default resource pack assigned to world; shader precompilation initiated.");
+
+    // 2. Once worker finishes decoding assets, generate the test world
     loadPromise.then(() => {
-        world.setResourcePack(defaultPack);
-        console.log("[DefaultPackLoader] Default resource pack assigned to world.");
+        console.log("[DefaultPackLoader] Assets decoded. Initializing world chunks...");
+        world.loadWorld();
     });
 });

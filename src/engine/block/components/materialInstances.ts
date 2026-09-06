@@ -14,9 +14,8 @@ export class BlockMaterialInstances extends BlockComponent {
 
     tiles: number[] = [];
 
-    static fromJson(value: MaterialInstances) { 
-        const instance = new BlockMaterialInstances();
-        instance.parse(value);
+    fromJson(value: MaterialInstances) { 
+        this.parse(value);
     }
 
     parse(materials: MaterialInstances) {
@@ -48,8 +47,8 @@ export class BlockMaterialInstances extends BlockComponent {
 
         for (let i = 0; i < this.materials.length; i++) {
             const material = this.materials[i];
-            const tileId = atlasTileRegistry.keyToId(material.texture!)!;
-            this.tiles[i] = tileId;
+            const tileId = atlasTileRegistry.keyToId(material.texture!);
+            this.tiles[i] = tileId !== undefined ? tileId : 0;
         }
     }
 }

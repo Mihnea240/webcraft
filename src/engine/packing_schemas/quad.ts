@@ -37,8 +37,6 @@ export const QuadStruct = new Struct({
     // --- Fourth word ---
     corner_ao: new ArrayType(new Bit(2), 4),
     ambient_occlusion: new Bit(8), 
-    // chunk_id: new Bit(16), This is stupid, the chunk data can be provided via a uniform or variable offset in the shader binding
     random_offset_id: new Bit(8), // Points to random offset range presets
-
-    //free 8 bits
+    padding2: new Bit(8), // Complete 32-bit word (128 bits total = 16 bytes)
 }); 

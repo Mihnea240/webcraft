@@ -2,7 +2,7 @@ import type { BlockComponent } from "./components/base";
 
 export type ComponentConstructor<T extends BlockComponent = BlockComponent> = {
     new (...args: any[]): T;
-    fromJson(json: any): any;
+    fromJson?(json: any): any;
     id: number;
 };
 

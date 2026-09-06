@@ -15,9 +15,6 @@ export class BlockType {
     public states!: BlockStates;
     public menuCategory!: MenuCategory; 
 
-
-    public basePermutation?: BlockPermutation;
-
     // A bitmask representing the potential components that this block type has.
     private masks: number[] = [];
     private masksPrefixPopCount: number[] = [];
@@ -41,15 +38,12 @@ export class BlockType {
             }
         }
 
-        const basePermutation = new BlockPermutation(denseComponents);
-        this.basePermutation = basePermutation;
-        return basePermutation;
         return new BlockPermutation(denseComponents);
     }
 
     get maxComponentCount() {
-        const a = this.masksPrefixPopCount.at(-1) ?? 0;
-        const b = popcount32(this.masks.at(-1) ?? 0);
+        const a = this.masksPrefixPopCount.at(-1)!;
+        const b = popcount32(this.masks.at(-1)!);
         return a + b;
     }
 
@@ -83,9 +77,7 @@ export class BlockType {
     }
 
     bindToRp(rp: any) {
-        for (const comp of this.basePermutation?.components || []) {
-            comp?.bindToRp(this, rp);
-        }
+        this.states?.bindToRp(this, rp);
         for (const comp of this.permutations.components()) {
             comp.bindToRp(this, rp);
         }

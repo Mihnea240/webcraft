@@ -1,15 +1,16 @@
-import { Components } from "../componentEnum";
 import { componentRegistry } from "../componentRegistry";
 import { BlockComponent } from "./base";
 
 export class BlockLightEmission extends BlockComponent {
-    public static id = Components.LightEmission;
     public lightLevel: number = 0;
 
-    constructor(json: any) {
-        super();
-        this.lightLevel = json;
+    fromJson(json: any) {
+        if (typeof json === "number") {
+            this.lightLevel = json;
+        }
     }
+
+    bindToRp() {}
 }
 
 componentRegistry.registerImplementation("minecraft:light_emission", BlockLightEmission);

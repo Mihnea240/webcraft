@@ -2,14 +2,13 @@ import { BlockType } from "src/engine/block/type";
 import { BlockDescriptor, BlockPermutationRegistry, BlockTypeRegistry } from "../registry/blockTypeRegistry";
 
 import { BlockBehavior, BlockDefinitions } from "@bedrock-types/bp/blocks/blocks";
-import { Block } from "@bedrock-types/rp/blocks";
 
 import { fileToJson, ZipFileEntry } from "src/engine/utils/decoders";
 
 export class BlockMapper {
 
     blocks: Iterable<[string, BlockDefinitions | BlockBehavior]>;
-    blocksJson: Record<string, Block> = {};
+    blocksJson: Record<string, BlockDefinitions> = {};
 
     constructor(
         public zipBuffer: ArrayBuffer,
@@ -32,16 +31,12 @@ export class BlockMapper {
 
     parse() {
         for (const [name, blockDef] of this.blocks) {
-            if (name === "__default.json") {
-                //Handle vanilla blocks of which format is not determined yet
-                continue; 
-            }
             this.parseBlock(blockDef);
         }
     }
 
     parseBlock(blockJson: BlockDefinitions | BlockBehavior) { 
-        const blockDef: BlockDefinitions = (blockJson as any)["minecraft:block"] || blockJson;
+        const blockDef: BlockDefinitions = blockJson["minecraft:block"] || blockJson;
         if (!blockDef || !blockDef.description) return;
 
         const type = new BlockType();

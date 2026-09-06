@@ -36,7 +36,7 @@ export class ChunkRenderRegistry extends ResourceRegistry<ChunkDescriptor, Chunk
     createStorageUnit(): BufferStorageUnit<typeof ChunkDataStruct, ChunkMeshMetadata> {
         return new BufferStorageUnit(
             ChunkDataStruct,
-            Constants.INITIAL_QUAD_BUFFER_SIZE / ChunkDataStruct.stride,
+            Constants.INITIAL_CHUNK_BUFFER_SIZE / 4, // 4096 chunks
             true
         );
     }
@@ -61,7 +61,7 @@ export class ChunkRenderRegistry extends ResourceRegistry<ChunkDescriptor, Chunk
             const blockStart = this.blockAllocator.allocate(size);
 
             chunkId = this.push(spatialKey, chunkData, {
-                quadOffset: blockStart * Constants.QUAD_BUFFER_BLOCK_SIZE / 16,
+                quadOffset: blockStart * Constants.QUAD_BUFFER_BLOCK_SIZE,
                 quadCount,
                 chunk
             });
@@ -71,10 +71,10 @@ export class ChunkRenderRegistry extends ResourceRegistry<ChunkDescriptor, Chunk
             const oldSize = Math.ceil(meta.quadCount / Constants.QUAD_BUFFER_BLOCK_SIZE);
 
             if (newSize > oldSize) {
-                this.blockAllocator.free(meta.quadOffset * 16 / Constants.QUAD_BUFFER_BLOCK_SIZE , oldSize);
+                this.blockAllocator.free(meta.quadOffset / Constants.QUAD_BUFFER_BLOCK_SIZE, oldSize);
                 const blockStart = this.blockAllocator.allocate(newSize);
 
-                meta.quadOffset = blockStart * Constants.QUAD_BUFFER_BLOCK_SIZE / 16;
+                meta.quadOffset = blockStart * Constants.QUAD_BUFFER_BLOCK_SIZE;
                 meta.quadCount = quadCount;
             }
             this.set(chunkId, chunkData);

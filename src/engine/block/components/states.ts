@@ -17,14 +17,15 @@ export class BlockStates extends BlockComponent {
     
     private fields: Record<string, Bit> = {};
 
+    fromJson(json: States) {
+        for (const key in json) {
+            this.addState(key, json[key]);
+        }
+    }
+
     static fromJson(json: States) { 
         const instance = new BlockStates();
-
-        for (const key in json) {
-            const value = json[key];
-            instance.addState(key, json[key]);
-        }
-
+        instance.fromJson(json);
         return instance;
     }
 
@@ -78,8 +79,28 @@ export class BlockStates extends BlockComponent {
         this.createPacker();
     }
 
+    encode(states: Record<string, any>): number {
+        if (!this.packer || Object.keys(states).length === 0) return 0;
+
+        const temp = new Uint32Array(1);
+        this.packer.setBuffer(temp.buffer);
+        const view = this.packer.view;
+
+        for (const [name, val] of Object.entries(states)) {
+            const stateIdx = this.getStateId(name);
+            if (stateIdx !== undefined) {
+                let bitVal = this.getStateValueIndex(stateIdx, val);
+                view[name] = bitVal;
+            }
+        }
+
+        return (temp[0] & 0xFFFF0000) >>> 0;
+    }
+
     createPacker() {
+        if (this.states.length === 0) return;
         this.packer = new DataViewPacker(new Struct(this.fields));
+        this.packer = new DataViewPacker(new Struct(this.fields), true, true);
     }
 }
 

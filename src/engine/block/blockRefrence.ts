@@ -1,86 +1,119 @@
-import { Chunk, ChunkState } from "@engine/chunk/";
+import { Chunk } from "@engine/chunk/";
 import { BlockDescriptor } from "../resource_manager/registry/blockTypeRegistry";
 import { World } from "../world";
 import { BlockDescriptorView } from "./blockDescriptorView";
 
-
-function compressChunkPosition(x: number, y: number, z: number) {
-    return (x << (Chunk.LOG2_SIZE << 1)) | (y << Chunk.LOG2_SIZE) | z;
-}
-
-
 export class BlockRefrence {
     public chunk?: Chunk;
-    chunkX: number = 0;
-    chunkY: number = 0;
-    chunkZ: number = 0;
-    chunkPosition: number = 0;
+    public chunkX: number = 0;
+    public chunkY: number = 0;
+    public chunkZ: number = 0;
+    public localX: number = 0;
+    public localY: number = 0;
+    public localZ: number = 0;
+    public chunkPosition: number = 0;
 
-    blockView: BlockDescriptorView;
+    private blockView?: BlockDescriptorView;
 
-    constructor(public world: World, worldPosition: [number, number, number] = [0, 0, 0]) {
-        this.setPosition(worldPosition[0], worldPosition[1], worldPosition[2]);
-
-        this.blockView = new BlockDescriptorView(world);
-        this.blockView.beforeUpdate = this.onUpdate.bind(this);
+    constructor(public world: World, worldPosition?: [number, number, number]) {
+        if (worldPosition) {
+            this.setPosition(worldPosition[0], worldPosition[1], worldPosition[2]);
+        }
     }
 
-    get worldX() {
-        return (this.chunkX << Chunk.LOG2_SIZE) + (this.chunkPosition & (Chunk.SIZE - 1));
+    get worldX(): number {
+        return (this.chunkX << Chunk.LOG2_SIZE) + this.localX;
     }
 
-    get worldY() {
-        return (this.chunkY << Chunk.LOG2_SIZE) + ((this.chunkPosition >> (Chunk.LOG2_SIZE << 1)) & (Chunk.SIZE - 1));
+    get worldY(): number {
+        return (this.chunkY << Chunk.LOG2_SIZE) + this.localY;
     }
 
-    get worldZ() {
-        return (this.chunkZ << Chunk.LOG2_SIZE) + ((this.chunkPosition >> Chunk.LOG2_SIZE) & (Chunk.SIZE - 1));
+    get worldZ(): number {
+        return (this.chunkZ << Chunk.LOG2_SIZE) + this.localZ;
     }
 
-    setPosition(x: number, y: number, z: number) { 
-        this.chunkX = x >> Chunk.LOG2_SIZE;
-        this.chunkY = y >> Chunk.LOG2_SIZE;
-        this.chunkZ = z >> Chunk.LOG2_SIZE;
-        this.chunkPosition = compressChunkPosition(
-            x & (Chunk.SIZE - 1),
-            y & (Chunk.SIZE - 1),
-            z & (Chunk.SIZE - 1)
-        );
+    setPosition(x: number, y: number, z: number): this { 
+        const cx = x >> Chunk.LOG2_SIZE;
+        const cy = y >> Chunk.LOG2_SIZE;
+        const cz = z >> Chunk.LOG2_SIZE;
 
-        this.chunk = this.world.chunkManager.get(this.chunkX, this.chunkY, this.chunkZ);
-    }
-
-    step(x: number, y: number, z: number) {
-        let newX = (this.chunkPosition & (Chunk.SIZE - 1)) + x;
-        let newZ = ((this.chunkPosition >> (Chunk.LOG2_SIZE)) & (Chunk.SIZE - 1)) + z;
-        let newY = (this.chunkPosition >> (Chunk.LOG2_SIZE << 1)) + y;
-
-        if(newX < 0 || newX >= Chunk.SIZE || newY < 0 || newY >= Chunk.SIZE || newZ < 0 || newZ >= Chunk.SIZE) {
-            this.setPosition(this.worldX + x, this.worldY + y, this.worldZ + z);
-            return true;
+        if (cx !== this.chunkX || cy !== this.chunkY || cz !== this.chunkZ || !this.chunk) {
+            this.chunkX = cx;
+            this.chunkY = cy;
+            this.chunkZ = cz;
+            this.chunk = this.world.chunkManager.getChunkAt(cx, cy, cz);
         }
 
-        this.chunkPosition = compressChunkPosition(newX, newY, newZ);
+        this.localX = x & (Chunk.SIZE - 1);
+        this.localY = y & (Chunk.SIZE - 1);
+        this.localZ = z & (Chunk.SIZE - 1);
+        this.chunkPosition = Chunk.compressPosition(this.localX, this.localY, this.localZ);
 
-        return false;
+        return this;
+    }
+
+    setChunkPosition(chunk: Chunk, lx: number, ly: number, lz: number): this {
+        this.chunk = chunk;
+        this.chunkX = chunk.worldPosition[0];
+        this.chunkY = chunk.worldPosition[1];
+        this.chunkZ = chunk.worldPosition[2];
+        this.localX = lx;
+        this.localY = ly;
+        this.localZ = lz;
+        this.chunkPosition = Chunk.compressPosition(lx, ly, lz);
+        return this;
+    }
+
+    step(dx: number, dy: number, dz: number): boolean {
+        const nx = this.localX + dx;
+        const ny = this.localY + dy;
+        const nz = this.localZ + dz;
+
+        if (nx >= 0 && nx < Chunk.SIZE && ny >= 0 && ny < Chunk.SIZE && nz >= 0 && nz < Chunk.SIZE) {
+            this.localX = nx;
+            this.localY = ny;
+            this.localZ = nz;
+            this.chunkPosition = Chunk.compressPosition(nx, ny, nz);
+            return false;
+        }
+
+        this.setPosition(this.worldX + dx, this.worldY + dy, this.worldZ + dz);
+        return true;
+    }
+
+    getDescriptor(): BlockDescriptor | undefined {
+        if (!this.chunk || !this.chunk.data) return undefined;
+        const palletId = this.chunk.data.get(this.localX, this.localY, this.localZ);
+        if (palletId === undefined) return undefined;
+        return this.chunk.pallet.getDescriptor(palletId);
+    }
+
+    setBlock(descriptor: BlockDescriptor): this {
+        if (this.chunk) {
+            this.chunk.placeBlock(this.localX, this.localY, this.localZ, descriptor);
+        }
+        return this;
+    }
+
+    getBlockView(): BlockDescriptorView | undefined { 
+        if (!this.chunk) return undefined;
+
+        const blockDescriptor = this.getDescriptor();
+        if (blockDescriptor === undefined) return undefined;
+
+        if (!this.blockView) {
+            this.blockView = new BlockDescriptorView(this.world);
+            this.blockView.beforeUpdate = this.onUpdate.bind(this);
+        }
+
+        this.blockView.setDescriptor(blockDescriptor);
+        return this.blockView;
     }
 
     onUpdate(oldDescriptor: BlockDescriptor, newDescriptor: BlockDescriptor, remeshFlags: number) {
-        this.chunk!.status = ChunkState.Dirty;
-
-        if (oldDescriptor !== newDescriptor) {
+        if (this.chunk && oldDescriptor !== newDescriptor) {
+            this.chunk.placeBlock(this.localX, this.localY, this.localZ, newDescriptor);
         }
-    }
-
-    getBlockView() { 
-        if (!this.chunk) return undefined;
-
-        const view = this.blockView;
-        const blockDescriptor = this.chunk.getDescriptorByCompressedPosition(this.chunkPosition);
-        if (!blockDescriptor) return undefined;
-
-        view.setDescriptor(blockDescriptor);
-
-        return view;
     }
 }

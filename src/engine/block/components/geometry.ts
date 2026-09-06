@@ -31,28 +31,31 @@ export class BlockGeometry extends BlockComponent {
     modelId: number = 0;
     boneData: BoneData[] = [];
 
-    static fromJson(geometry: Geometry) {
-        const instance = new BlockGeometry();
-
+    fromJson(geometry: Geometry) {
         if (typeof geometry === "string") {
-            instance.identifier = geometry;
-            return instance;
+            this.identifier = geometry;
+            return;
         }
 
-        instance.identifier = geometry.identifier!;
-        instance.boneVisibility = geometry.bone_visibility
-        instance.uv_lock = geometry.uv_lock || false;
-
-        return instance;
+        this.identifier = geometry.identifier!;
+        this.boneVisibility = geometry.bone_visibility;
+        this.uv_lock = geometry.uv_lock || false;
     }
 
     bindToRp(blockType: BlockType, rp: ResourcePack) {
         const modelRegistry = rp.get(BlockModelRegistry);
-        this.modelId = modelRegistry.keyToId(this.identifier)!;
+        let modelId = modelRegistry.keyToId(this.identifier);
+        if (modelId === undefined) {
+            modelId = 0;
+        }
+        this.modelId = modelId;
 
-        const model = modelRegistry.get(this.modelId)!;
+        const model = modelRegistry.get(this.modelId);
+        if (!model) {
+            throw new Error(`BlockModel not found for modelId ${this.modelId} (identifier: "${this.identifier}") in block ${blockType.description}`);
+        }
+
         const boneCount = model.boneData.length;
-
         this.boneData = Array.from({ length: boneCount }, () => ({ visible: true, uv_locked: false }));
 
         for (const [boneName, visibility] of Object.entries(this.boneVisibility || {})) {
@@ -70,7 +73,7 @@ export class BlockGeometry extends BlockComponent {
             for (const bone of this.boneData) {
                 bone.uv_locked = true;
             }
-        } else if (this.uv_lock != false) {
+        } else if (this.uv_lock != false && Array.isArray(this.uv_lock)) {
             for (const boneName of this.uv_lock) { 
                 const boneIndex = model.boneNameToId.get(boneName);
                 if (boneIndex === undefined) continue;

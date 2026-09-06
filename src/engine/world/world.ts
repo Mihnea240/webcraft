@@ -1,122 +1,102 @@
-import { AtlasRegistry } from "src/engine/resource_manager/registry/atlasRegistry";
 import { ResourcePack } from "src/engine/resource_manager/RP";
 import { PlayerRegistry } from "./playerRegistry";
 import { SceneManager } from "./sceneManager";
 
 import { Player } from "@engine/player";
+import Stats from "three/addons/libs/stats.module.js";
 import * as THREE from "three/webgpu";
 
-import * as Constants from "@engine/resource_manager/constants";
+import { BlockRefrence } from "@engine/block/blockRefrence";
+import { Chunk } from "../chunk";
 import { ChunkManager } from "../chunk/chunkManager";
-import { BlockTypeRegistry } from "../resource_manager/registry/blockTypeRegistry";
+import { BlockDescriptor, BlockPermutationRegistry, BlockTypeRegistry } from "../resource_manager/registry/blockTypeRegistry";
 
 export class World {
 	playerRegistry = new PlayerRegistry();
 	sceneManager = new SceneManager();
 	chunkManager: ChunkManager;
+	readonly blockCursor: BlockRefrence;
 
 	public resourcePack!: ResourcePack;
 	private lastTime = 0;
+	private stats?: Stats;
 
 	constructor() {
 		this.chunkManager = new ChunkManager(this);
+		this.blockCursor = new BlockRefrence(this);
 	}
 
 	setResourcePack(resourcePack: ResourcePack) {
 		this.resourcePack = resourcePack;
 		this.chunkManager.initMaterial();
+
 		this.init();
 	}
 
 	async init() {
 		const { scene, renderer } = this.sceneManager;
 		await renderer.init();
-		renderer.shadowMap.enabled = true;
 
-		// Pre-compile terrain shader in background while assets load
-		if (this.chunkManager.chunkMaterial && this.resourcePack?.pipeline) {
-			this.resourcePack.pipeline.precompile(renderer, this.chunkManager.chunkMaterial).catch(console.error);
+		renderer.shadowMap.enabled = false;
+
+		// Display color texture atlas layer on plane (layer 0)
+		if (this.resourcePack?.pipeline) {
+			const planeGeometry = new THREE.PlaneGeometry(10, 10);
+
+			const colorQuad = new THREE.Mesh(
+				planeGeometry,
+				this.resourcePack.pipeline.createAtlasPlaneMaterial(0)
+			);
+			colorQuad.position.set(0, 5, -15);
+			scene.add(colorQuad);
 		}
 
-		// 1. Retrieve the compiled textures from AtlasRegistry
-		const atlasRegistry = this.resourcePack.get(AtlasRegistry);
-		
-		const [atlasWidth, atlasHeight] = Constants.ATLAS_DIMENSIONS;
-		const layerSize = atlasWidth * atlasHeight * 4;
-
-		// Color Atlas: First layer
-		const colorData = new Uint8Array(atlasRegistry.atlasBuffer, 0, layerSize);
-		const colorTexture = new THREE.DataTexture(colorData, atlasWidth, atlasHeight, THREE.RGBAFormat);
-		colorTexture.minFilter = THREE.NearestFilter;
-		colorTexture.magFilter = THREE.NearestFilter;
-		colorTexture.generateMipmaps = false; // Disable mipmapping for sharp pixel art
-		colorTexture.needsUpdate = true;
-
-		// MERS Atlas: Second layer
-		const mersData = new Uint8Array(atlasRegistry.atlasBuffer, layerSize, layerSize);
-		const mersTexture = new THREE.DataTexture(mersData, atlasWidth, atlasHeight, THREE.RGBAFormat);
-		mersTexture.minFilter = THREE.NearestFilter;
-		mersTexture.magFilter = THREE.NearestFilter;
-		mersTexture.generateMipmaps = false;
-		mersTexture.needsUpdate = true;
-
-		// 2. Create test quads
-		const planeGeometry = new THREE.PlaneGeometry(10, 10);
-		
-		// Color Atlas Quad (left side)
-		const colorMaterial = new THREE.MeshBasicNodeMaterial({
-			map: colorTexture
-		});
-		const colorQuad = new THREE.Mesh(planeGeometry, colorMaterial);
-		colorQuad.position.set(-6, 5, -15);
-		scene.add(colorQuad);
-
-		// MERS Atlas Quad (right side)
-		const mersMaterial = new THREE.MeshBasicNodeMaterial({
-			map: mersTexture
-		});
-		const mersQuad = new THREE.Mesh(planeGeometry, mersMaterial);
-		mersQuad.position.set(6, 5, -15);
-		scene.add(mersQuad);
-
-		const cubeGeometry = new THREE.BoxGeometry(2, 2, 2);
-		const cubeMaterial = new THREE.MeshPhongNodeMaterial({
-			color: 0x00ff00,
-		});
-		const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-		cube.position.set(0, 0, -5); // Move the cube in front of the camera
-		cube.castShadow = true;
-		cube.receiveShadow = true;
-		scene.add(cube);
-
-		// Add a floor plane to receive the shadows
-		const floorGeometry = new THREE.PlaneGeometry(20, 20);
-		const floorMaterial = new THREE.MeshPhongNodeMaterial({
-			color: 0x888888,
-		});
-		const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-		floor.rotation.x = -Math.PI / 2;
-		floor.position.set(0, -1, -5); // Position just below the cube
-		floor.receiveShadow = true;
-		scene.add(floor);
-
-		const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+		const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
 		scene.add(ambientLight);
 
-		// Use white light and place it closer to the cube (in front-right-top) so it's bright enough and visible
-		const pointLight = new THREE.PointLight(0xffffff, 50, 20);
-		pointLight.position.set(2, 3, -3); 
-		pointLight.castShadow = true;
-		scene.add(pointLight);
+		// Pre-compile terrain shader in background matching full scene state
+		if (this.chunkManager.chunkMaterial && this.resourcePack?.pipeline) {
+			this.resourcePack.pipeline.precompile(renderer, this.chunkManager.chunkMaterial, scene).catch(console.error);
+		}
+
+		// Helpers: Coordinate axes (X=Red, Y=Green, Z=Blue) & ground grid
+		const axesHelper = new THREE.AxesHelper(16);
+		axesHelper.position.set(0, 0.02, 0);
+		scene.add(axesHelper);
+
+		const gridHelper = new THREE.GridHelper(64, 64, 0xff4444, 0x444444);
+		gridHelper.position.set(16, 0.01, 16);
+		scene.add(gridHelper);
+
+		// FPS / Performance Tracker
+		if (typeof document !== "undefined" && !this.stats) {
+			this.stats = new Stats();
+			this.stats.showPanel(0); // 0: fps, 1: ms, 2: mb
+			this.stats.dom.style.position = "absolute";
+			this.stats.dom.style.top = "10px";
+			this.stats.dom.style.left = "10px";
+			this.stats.dom.style.zIndex = "99999";
+			document.body.appendChild(this.stats.dom);
+		}
 
 		renderer.setAnimationLoop(this.renderLoop.bind(this));
 	}
 
 	renderLoop(time: number) {
+		this.stats?.begin();
+
 		const delta = time ? (time - this.lastTime) / 1000 : 0;
 		this.lastTime = time || 0;
 
+		this.chunkManager.meshChunks();
+
 		this.sceneManager.render(this.playerRegistry, delta);
+
+		this.stats?.end();
+	}
+
+	getBlock(x: number, y: number, z: number): BlockRefrence {
+		return this.blockCursor.setPosition(x, y, z);
 	}
 
 	addPlayer(player: Player) {
@@ -128,11 +108,68 @@ export class World {
 		player.cleanup();
 		this.playerRegistry.removePlayer(player);
 	}
+
+	getBlockDescriptor(name: string, states?: Record<string, any>): BlockDescriptor {
+		const typeRegistry = this.resourcePack.get(BlockTypeRegistry);
+		const permutationRegistry = this.resourcePack.get(BlockPermutationRegistry);
+
+		let typeId = typeRegistry.keyToId(name);
+		if (typeId === undefined && !name.includes(":")) {
+			typeId = typeRegistry.keyToId(`minecraft:${name}`);
+		}
+		if (typeId === undefined) {
+			throw new Error(`BlockType not found for "${name}"`);
+		}
+
+		const blockType = typeRegistry.get(typeId)!;
+		const stateBits = states ? blockType.states.encode(states) : 0;
+		const descriptor: BlockDescriptor = (stateBits | typeId) >>> 0;
+
+		const existing = permutationRegistry.getByDescriptor(descriptor);
+		if (existing) {
+			return descriptor;
+		}
+
+		let basePermutation = permutationRegistry.getByDescriptor(typeId)!;
+		const newPermutation = blockType.onStateChanges(stateBits, basePermutation) ?? basePermutation;
+
+		if (newPermutation !== basePermutation) {
+			typeRegistry.bakePermutation(newPermutation, blockType, this.resourcePack);
+		}
+		permutationRegistry.push(descriptor, newPermutation);
+
+		return descriptor;
+	}
+
+	// Placeholder for future world loading logic
+	loadWorld() {
+		for (let i = 0; i < 1; i++) {
+			for (let j = 0; j < 1; j++) {
+				const chunk = new Chunk(this, [i, 0, j]);
+				this.chunkManager.addChunk(chunk);
+			}
+		}
+
+		testWorld(this);
+	}
 }
 
 
 function testWorld(world: World) {
-	const typeRegistry = world.resourcePack.get(BlockTypeRegistry);
+	let dirt: BlockDescriptor;
+	try {
+		dirt = world.getBlockDescriptor("minecraft:dirt");
+	} catch {
+		console.warn("Dirt block not found in resource pack. Skipping test world generation.");
+		return;
+	}
 
-	const stoneType = typeRegistry.get
+	console.log("Generating test world with dirt ground plane...", dirt);
+	// Place a dirt ground plane across chunks using the reusable cursor
+	const cursor = world.blockCursor;
+	for (let x = 0; x < 1; x++) {
+		for (let z = 0; z < 1; z++) {
+			cursor.setPosition(x, 0, z).setBlock(dirt);
+		}
+	}
 }

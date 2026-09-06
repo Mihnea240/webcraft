@@ -28,8 +28,17 @@ export class Chunk {
     data?: Array3D<any>;
     status = ChunkState.Empty;
 
+    static compressPosition(x: number, y: number, z: number) {
+        return x | (z << Chunk.LOG2_SIZE) | (y << (Chunk.LOG2_SIZE << 1));
+    }
+
     static compressedPosiztion(x: number, y: number, z: number) {
-        return (x << (Chunk.LOG2_SIZE << 1)) | (y << Chunk.LOG2_SIZE) | z;
+        return Chunk.compressPosition(x, y, z);
+    }
+
+    markDirty() {
+        this.status = ChunkState.Dirty;
+        this.world.chunkManager.markDirty(this);
     }
 
     constructor(public world: World, public worldPosition: [number, number, number]) {
@@ -95,10 +104,15 @@ export class Chunk {
         }
 
         this.data!.set(x, y, z, palletId);
+        this.markDirty();
     }
 
     placePalletId(x: number, y: number, z: number, palletId: number) {
+        if (!this.data) {
+            this.allocate();
+        }
         this.data!.set(x, y, z, palletId);
+        this.markDirty();
     }
 
 }

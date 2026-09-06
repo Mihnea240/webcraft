@@ -1,4 +1,4 @@
-export enum Face {
+export const enum Face {
 	/** +X face */
 	RIGHT = 0, 
 	/** +Y face */
@@ -26,7 +26,7 @@ export enum Face {
 	WEST = 5,
 }
 
-export enum Facing {
+export const enum Facing {
 	EAST = 0,
 	NORTH = 1,
 	WEST = 2,
@@ -53,11 +53,14 @@ export default class Faces {
 	static readonly FACING_WEST = Facing.WEST;
 	static readonly FACING_SOUTH = Facing.SOUTH;
 
-	static Values = [Face.RIGHT, Face.TOP, Face.FRONT, Face.BACK, Face.BOTTOM, Face.LEFT];
+	static readonly Values: readonly Face[] = [
+		Face.RIGHT, Face.TOP, Face.FRONT, Face.BACK, Face.BOTTOM, Face.LEFT
+	] as const;
 
 	static readonly Cardinal: readonly string[] = [
 		"east", "up", "south", "north", "down", "west"
 	] as const;
+
 	static readonly Directional: readonly string[] = [
 		"right", "top", "front", "back", "bottom", "left"
 	] as const;
@@ -82,7 +85,7 @@ export default class Faces {
 	 * Returns the opposite face.
 	 */
 	static opposite(face_enum: Face): Face {
-		return (5 - face_enum) as Face; // 0 -> 5, 1 -> 4, 2 -> 3, etc.
+		return ((Face.LEFT - face_enum) as Face); // 0 -> 5, 1 -> 4, 2 -> 3, etc.
 	}
 
 	/**
@@ -111,7 +114,7 @@ export default class Faces {
 		return -1;
 	}
 
-	static Horizontal = [Face.EAST, Face.SOUTH, Face.WEST, Face.NORTH];
+	static readonly Horizontal: readonly Face[] = [Face.EAST, Face.SOUTH, Face.WEST, Face.NORTH] as const;
 	/**
 	 * Rotates a face around the Y-axis based on the looking direction.
 	 */

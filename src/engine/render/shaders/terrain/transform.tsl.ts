@@ -10,10 +10,10 @@ export const extractQuaternionFromPacked = Fn(([packed], _builder) => {
 
     const quaternion = vec4().toVar();
     Switch(axis)
-        .Case(uint(0), () => quaternion.assign(vec4(d, a, b, c)))
-        .Case(uint(1), () => quaternion.assign(vec4(a, d, b, c)))
-        .Case(uint(2), () => quaternion.assign(vec4(a, b, d, c)))
-        .Case(uint(3), () => quaternion.assign(vec4(a, b, c, d)));
+        .Case(uint(0), () => { quaternion.assign(vec4(d, a, b, c)); })
+        .Case(uint(1), () => { quaternion.assign(vec4(a, d, b, c)); })
+        .Case(uint(2), () => { quaternion.assign(vec4(a, b, d, c)); })
+        .Case(uint(3), () => { quaternion.assign(vec4(a, b, c, d)); });
 
     return quaternion;
     

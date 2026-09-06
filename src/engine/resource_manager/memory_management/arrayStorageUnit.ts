@@ -7,6 +7,8 @@ export class ArrayStorageUnit<ElementType, MetaType> implements StorageUnit<Elem
     constructor(initialSize: number = 0, public useMetadata: boolean = true) {
         this.data = new Array<ElementType>(initialSize);
         this.metadata = useMetadata ? new Array<MetaType>(initialSize) : [];
+        this.data = [];
+        this.metadata = [];
     }
 
     public get(id: number): ElementType | undefined {

@@ -13,19 +13,30 @@ export class PermutationEntry {
     }
 }
 
+export const conditionEvaluator = {
+    evaluate(condition: string, state: number): boolean {
+        if (!condition) return false;
+        return false;
+    }
+};
+
 export class BlockPermutations extends BlockComponent {
     public rules: PermutationEntry[] = [];
 
-    static fromJson(json: Permutations) {
-        const instance = new BlockPermutations();
-
-        instance.rules = (json || []).map(entry => new PermutationEntry(
+    fromJson(json: Permutations) {
+        this.rules = (json || []).map(entry => new PermutationEntry(
             entry.condition as string,
             [...BlockComponent.getComponentsFromJson(entry.components || {})]
         ));
+    }
 
+    static fromJson(json: Permutations) {
+        const instance = new BlockPermutations();
+        instance.fromJson(json);
         return instance;
     }
+
+    bindToRp() {}
 
     *components() {
         yield* this.rules.values().flatMap(rule => rule.components); 

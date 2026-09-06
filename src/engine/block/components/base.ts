@@ -19,14 +19,18 @@ export abstract class BlockComponent{
         return null;
     }
 
-    abstract bindToRp(blockType: BlockType, rp: ResourcePack);
+    abstract fromJson(json: any): void;
+
+    abstract bindToRp(blockType: BlockType, rp: ResourcePack): void;
 
     public static *getComponentsFromJson(json: Record<string, any>) {
         for (const [key, value] of Object.entries(json)) {
             const implementation = componentRegistry.getImplementation(key);
             if (!implementation) continue;
 
-            yield new implementation(value);
+            const comp = new implementation();
+            comp.fromJson(value);
+            yield comp;
         }
     }
 }

@@ -5,8 +5,8 @@ import { World } from "src/engine/world";
 
 export class BlockPallet { 
     permutations: BlockPermutation[] = [];
-    descriptors: BlockDescriptor[] = [];
-    descriptorInstances: number[] = [];
+    descriptors: BlockDescriptor[] = [-1];
+    descriptorInstances: number[] = [0];
 
     descriptorToId: Map<BlockDescriptor, number> = new Map();
 
@@ -43,7 +43,7 @@ export class BlockPallet {
         const id = this.descriptors.length;
         this.descriptorToId.set(descriptor, id);
         this.descriptors.push(descriptor);
-        this.descriptorInstances.push(0);
+        this.descriptorInstances.push(1);
         this.permutations.push(permutation);
 
         return id;
@@ -54,7 +54,7 @@ export class BlockPallet {
     }
 
     getPermutation(id: number) { 
-        return this.permutations[id];
+        return this.permutations[id - 1];
     }
 
     getDescriptor(id: number): BlockDescriptor | undefined {

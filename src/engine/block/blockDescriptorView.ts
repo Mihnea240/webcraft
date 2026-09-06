@@ -69,24 +69,28 @@ export class BlockDescriptorView {
 
     update() { 
         if (!this.packer) return RemeshFlags.None;
-        if(this.tempArray[0] === (this.descriptor & 0xFFFF0000)) return RemeshFlags.None;
+        const currentRawState = (this.descriptor & 0xFFFF0000) >>> 0;
+        const newState = (this.tempArray[0] & 0xFFFF0000) >>> 0;
+        if (newState === currentRawState) return RemeshFlags.None;
 
         const baseTypeId = this.descriptor & 0xFFFF;
-        const newState = (this.tempArray[0] & 0xFFFF0000) >>> 0;
         const newDescriptor = (newState | baseTypeId) >>> 0;
         const oldDescriptor = this.descriptor;
         const blockType = this.getBlockType()!;
         const oldPermutation = this.getBlockPermutation()!;
 
-        const newPermutation = blockType.onStateChanges(newState, oldPermutation);
-
+        // Check if permutation already exists in registry
+        let newPermutation = this.permutationRegistry.getByDescriptor(newDescriptor);
         if (!newPermutation) {
-            return RemeshFlags.None;
+            newPermutation = blockType.onStateChanges(newState, oldPermutation) ?? oldPermutation;
+            if (newPermutation !== oldPermutation) {
+                this.typeRegistry.bakePermutation(newPermutation, blockType, this.context.resourcePack);
+            }
+            this.permutationRegistry.push(newDescriptor, newPermutation);
         }
 
-        this.typeRegistry.bakePermutation(newPermutation, blockType, this.context.resourcePack);
-        this.permutationRegistry.push(newDescriptor, newPermutation);
         this.descriptor = newDescriptor;
+        this.blockPermutation = newPermutation;
 
         // Determine what needs to be remeshed based on the changes in components
         let remeshFlags = RemeshFlags.None;

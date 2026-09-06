@@ -129,11 +129,13 @@ export class ResourcePack {
         // 5. Marry block definitions to textures and models
         const typeRegistry = this.get(BlockTypeRegistry);
         typeRegistry.bindToRp(this);
+
+        // 6. Synchronize newly unpacked binary registry data to GPU pipeline storage buffers and textures
+        this.pipeline?.syncFromRegistries();
     }
 
     private async extractMetadata() {
-        const manifestFile = this.fileMap.get('rp/manifest.json')
-            || this.fileMap.get('resource_pack/manifest.json')
+        const manifestFile = this.fileMap.get('resource_pack/manifest.json')
             || this.fileMap.get('manifest.json');
 
         if (!manifestFile) {
