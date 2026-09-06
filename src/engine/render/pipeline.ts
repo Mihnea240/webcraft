@@ -33,17 +33,11 @@ export const TslQuadStruct = struct({
 
 export class RenderPipeline {
     // --- GPU Storage Attributes & TSL Storage Nodes ---
-    public quadBuffer!: Three.StorageBufferAttribute;
-    public quadsNode!: Three.StorageBufferNode<"struct">;
-
     public cubeBuffer!: Three.StorageBufferAttribute;
     public cubesNode!: Three.StorageBufferNode<"struct">;
 
     public textureDescriptorsBuffer!: Three.StorageBufferAttribute;
     public textureDescriptorsNode!: Three.StorageBufferNode<"struct">;
-
-    public chunkBuffer!: Three.StorageBufferAttribute;
-    public chunksNode!: Three.StorageBufferNode<"struct">;
 
     // Color & MERS Atlas Texture Bindings
     public terrainTexture!: Three.Data3DTexture;

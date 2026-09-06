@@ -92,7 +92,6 @@ export class ChunkMesher {
             this.writePointer * QuadStruct.bucketStride
         );
 
-        console.log(buffer);
         return buffer;
     }
 

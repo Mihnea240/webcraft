@@ -94,15 +94,12 @@ export class ChunkRenderRegistry extends ResourceRegistry<ChunkDescriptor, Chunk
         const meta = this.getMeta(chunkId);
         if (meta.mesh) {
             meta.mesh.removeFromParent();
+            meta.mesh.geometry.dispose();
             meta.mesh = undefined;
-        }
-        if (meta.geometry) {
-            meta.geometry.dispose();
-            meta.geometry = undefined;
         }
 
         const size = Math.ceil(meta.quadCount / Constants.QUAD_BUFFER_BLOCK_SIZE);
-        this.blockAllocator.free(meta.quadOffset * 16 / Constants.QUAD_BUFFER_BLOCK_SIZE, size);
+        this.blockAllocator.free(meta.quadOffset / Constants.QUAD_BUFFER_BLOCK_SIZE, size);
 
         const movedKey = this.pop(chunkId);
         if (movedKey !== undefined) {

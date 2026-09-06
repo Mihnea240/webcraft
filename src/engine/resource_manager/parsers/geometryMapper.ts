@@ -8,6 +8,7 @@ import { packQuaternion } from "src/engine/utils/quaternion";
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 
 import { fileToJson, ZipFileEntry } from "@engine/utils/decoders";
+// import { Cube } from "src/bedrock-types/rp/block_culling/block_culling";
 import { Geometry, Model } from "src/bedrock-types/rp/models/entity/model_entity";
 
 type Cube = Cubes[number] & { inset?: number };
@@ -63,22 +64,19 @@ export class GeometryMapper {
                 }
                 continue; 
             }
-            console.log(name, geometry);
             this.parseBlockModel(geometry[0]);
         }
     }
 
-
     parseBlockModel(model: Model) {
         const blockModel = new BlockModel();
         const name = model.description.identifier;
-
         const id = this.blockModelRegistry.push(name, blockModel);
         if (!model.bones) return id;
 
         // Map bone names to their corresponding indices in the boneData array
-        for (const bone of model.bones) {
-            blockModel.boneNameToId.set(bone.name, blockModel.boneData.length);
+        for (let i = 0; i < model.bones.length; i++) {
+            blockModel.boneNameToId.set(model.bones[i].name, i);
         }
 
         // Create the tree structure of bones by mapping each bone's parent to its index in the boneData array
@@ -156,7 +154,7 @@ export class GeometryMapper {
     }
 
     parseCubeGeometry(cube: Cube, transform: Matrix4) {
-        const id = this.cubeGeometryRegistry.writePointer();
+        const id = this.cubeGeometryRegistry.add();
         const view = this.cubeGeometryRegistry.get(id)!;
 
         const offset = this.offset;
@@ -200,7 +198,8 @@ export class GeometryMapper {
         view.inset = cube.inset ? Math.floor(cube.inset * 4) : 0;
 
         const materials = this.resolveUvs(view, cube.uv, scale);
-        return this.cubeGeometryRegistry.add(undefined, materials);
+        this.cubeGeometryRegistry.setMeta(id, materials);
+        return id;
     }
 
     resolveFaceHeight(scale: Vector3, face: number) {

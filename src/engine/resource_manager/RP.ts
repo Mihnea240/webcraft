@@ -8,8 +8,8 @@ import { CubeGeometryRegistry } from './registry/cubeGeometryRegistry';
 import { WorkerEventType } from './worker/workerDataProtocol';
 import { WorkerEntryPoint } from './workerEntryPoint';
 
-import { BlockMapper } from './parsers/blockMapper';
 import { RenderPipeline } from '@engine/render/pipeline';
+import { BlockMapper } from './parsers/blockMapper';
 
 export interface ResourcePackData {
     name: string;

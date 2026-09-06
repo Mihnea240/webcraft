@@ -51,8 +51,8 @@ export const NORMALS_ARRAY = array([
 ]);
 
 export const QUAD_UVS_ARRAY = array([
-    vec2(1.0, 0.0), // Bottom Right
-    vec2(1.0, 1.0), // Top Right
-    vec2(0.0, 1.0), // Top Left
-    vec2(0.0, 0.0), // Bottom Left
+    vec2(1.0, 1.0), // 0: Bottom Right
+    vec2(1.0, 0.0), // 1: Top Right
+    vec2(0.0, 0.0), // 2: Top Left
+    vec2(0.0, 1.0), // 3: Bottom Left
 ]);

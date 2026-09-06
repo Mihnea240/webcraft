@@ -77,6 +77,16 @@ export abstract class ResourceRegistry<ElementType, MetaType = void, KeyType = s
     }
 
     /**
+     * Registers an alias key pointing to an existing resource ID or key.
+     */
+    public alias(aliasKey: KeyType, target: number | KeyType): boolean {
+        const id = typeof target === "number" ? target : this.keyToId(target);
+        if (id === undefined) return false;
+        this.keyToIdMap.set(aliasKey, id);
+        return true;
+    }
+
+    /**
      * Removes the element at the specified ID using Swap-and-Pop.
      * Swaps the last element into slot `id`, updates its key-to-id mapping,
      * removes the deleted key, and decrements the storage write pointer.

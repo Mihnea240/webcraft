@@ -88,6 +88,9 @@ export class BlockTypeRegistry extends ResourceRegistry<BlockType, void, string>
         const bakedCubes: BakedCube[] = [];
 
         for (let boneIdx = 0; boneIdx < model.boneData.length; boneIdx++) {
+            if (geometry.boneData && geometry.boneData[boneIdx] && geometry.boneData[boneIdx].visible === false) {
+                continue;
+            }
             const bone = model.boneData[boneIdx];
             for (let i = 0; i < bone.cubeCount; i++) {
                 const cubeId = bone.cubeStartId + i;
@@ -99,6 +102,9 @@ export class BlockTypeRegistry extends ResourceRegistry<BlockType, void, string>
                     let matId = materials?.nameToId.get(matName);
                     if (matId === undefined) {
                         matId = materials?.nameToId.get("*");
+                    }
+                    if (matId === undefined) {
+                        matId = materials?.nameToId.get("all");
                     }
                     faceTileIds[f] = matId !== undefined ? (materials?.tiles[matId] ?? 0) : 0;
                 }

@@ -23,7 +23,7 @@ export const CubeStruct = new Struct({
 
     // --- Move the cube faces along the normal direction (1 Byte) ---
     inset: new Uint8(),
-    //free 5 bytes
+    padding: new Bit(8), // 32 bits for bucket 11 (384 bits total = 48 bytes = 12 u32s)
 
     // random_offset_index: new Bit(8),
     // n_way_x: new Bit(4),

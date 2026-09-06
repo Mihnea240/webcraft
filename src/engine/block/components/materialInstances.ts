@@ -47,7 +47,21 @@ export class BlockMaterialInstances extends BlockComponent {
 
         for (let i = 0; i < this.materials.length; i++) {
             const material = this.materials[i];
-            const tileId = atlasTileRegistry.keyToId(material.texture!);
+            let textureName = material.texture || "";
+
+            // Dereference `#var` if present
+            if (textureName.startsWith("#")) {
+                const refId = this.nameToId.get(textureName.slice(1));
+                if (refId !== undefined && this.materials[refId]) {
+                    textureName = this.materials[refId].texture || textureName;
+                }
+            }
+
+            const cleanName = textureName.replace(/^minecraft:block\/|^block\//, "");
+            let tileId = atlasTileRegistry.keyToId(cleanName);
+            if (tileId === undefined && cleanName !== textureName) {
+                tileId = atlasTileRegistry.keyToId(textureName);
+            }
             this.tiles[i] = tileId !== undefined ? tileId : 0;
         }
     }

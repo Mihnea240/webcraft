@@ -158,7 +158,7 @@ export class World {
 function testWorld(world: World) {
 	let dirt: BlockDescriptor;
 	try {
-		dirt = world.getBlockDescriptor("minecraft:dirt");
+		dirt = world.getBlockDescriptor("minecraft:crafting_table");
 	} catch {
 		console.warn("Dirt block not found in resource pack. Skipping test world generation.");
 		return;

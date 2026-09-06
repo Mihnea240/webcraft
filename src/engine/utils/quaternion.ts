@@ -43,7 +43,7 @@ export function packQuaternion(q: THREE.Quaternion): number {
     const uB = scaleTo10Bit(b);
     const uC = scaleTo10Bit(c);
     
-    return (maxIndex << 30) | (uA << 20) | (uB << 10) | uC;
+    return ((maxIndex << 30) | (uA << 20) | (uB << 10) | uC) >>> 0;
 }
 
 const euler = new THREE.Euler();

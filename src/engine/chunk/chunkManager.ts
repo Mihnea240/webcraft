@@ -83,7 +83,7 @@ export class ChunkManager {
                 const meta = this.chunkRegistry.getMeta(chunkId);
                 if (meta?.mesh) {
                     meta.mesh.material = this.chunkMaterial;
-                    meta.geometry!.setIndex(pipeline.indexBuffer);
+                    meta.mesh.geometry.setIndex(pipeline.indexBuffer);
                 }
             }
         }
@@ -164,16 +164,15 @@ export class ChunkManager {
                 const [cx, cy, cz] = chunk.worldPosition;
                 mesh.position.set(cx, cy, cz).multiplyScalar(Constants.CHUNK_SIZE);
 
-                meta.geometry = geometry;
                 meta.mesh = mesh;
                 scene.add(mesh);
             } else {
-                meta.geometry!.setIndex(pipeline.indexBuffer);
+                meta.mesh.geometry.setIndex(pipeline.indexBuffer);
             }
 
             meta.mesh.userData.quadOffset = meta.quadOffset;
             meta.mesh.userData.chunkOffset = chunkId;
-            meta.geometry!.setDrawRange(0, size * 6);
+            meta.mesh.geometry.setDrawRange(0, size * 6);
             meta.mesh.visible = size > 0;
 
             if (budget !== undefined && meshedCount >= budget) {
