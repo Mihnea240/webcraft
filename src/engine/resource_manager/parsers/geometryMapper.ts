@@ -282,7 +282,7 @@ export class GeometryMapper {
 
         for (let face = 0; face < 6; face++) {
             const faceStorage = uvStorage.get(face);
-            const faceUv = (uv as any)[faceNames[face]] as any;
+            const faceUv = uv[faceNames[face]];
 
             if (!faceUv) {
                 faceStorage.u = 0;
@@ -298,7 +298,7 @@ export class GeometryMapper {
                     duplicatedMaterials = true;
                 }
 
-                (materials as any)[face] = faceUv.material_instance;
+                materials[face] = faceUv.material_instance;
             }
 
             const [u, v] = faceUv.uv ?? defaultUv;

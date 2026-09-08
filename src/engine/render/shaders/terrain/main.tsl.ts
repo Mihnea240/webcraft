@@ -87,8 +87,12 @@ export function createTerrainMaterial(nodes: TerrainShaderNodes): Three.MeshBasi
         const uvDescriptor = cubeView.uvs.get(normalId);
         const cornerUv = QUAD_UVS_ARRAY.element(quadVertexIndex).toConst();
         const tileUv = vec2(textureView.atlas_u, textureView.atlas_v).mul(16.0).add(vec2(8, 8)).toConst();
+
+        const uvOffset = vec2(uvDescriptor.u, uvDescriptor.v).toConst();
+        const uvScale = vec2(uvDescriptor.w, uvDescriptor.h).toConst();
+        const localUv = cornerUv.mul(uvScale).add(uvOffset).toConst();
         
-        const uv = tileUv.add(cornerUv.mul(16.0)).mul(vec2(
+        const uv = tileUv.add(localUv).mul(vec2(
             1.0 / Constants.ATLAS_DIMENSIONS[0],
             1.0 / Constants.ATLAS_DIMENSIONS[1]
         )).toConst();

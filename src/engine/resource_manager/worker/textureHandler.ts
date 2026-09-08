@@ -7,7 +7,7 @@ import { WorkerEventType, WorkerRequest, WorkerResponse } from "./workerDataProt
 
 self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     const request = event.data;
-    
+
     if (request.type === WorkerEventType.PARSE_RESOURCE_PACK) {
         try {
             const registries = {
@@ -23,7 +23,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
 
             // 2. Extract ZIP headers once for all mappers
             const headers = extractHeaders(request.zipBuffer);
-            
+
             // 3. Run Texture parsing & Atlas building
             const startTime = performance.now();
             const textureMapper = new TextureMapper(
@@ -58,7 +58,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
             };
 
             // Transfer the buffers back to the main thread
-            self.postMessage(response, payload.buffers);
+            self.postMessage(response, { transfer: payload.buffers });
         } catch (error) {
             console.error("Worker resource extraction failed:", error);
             throw error;

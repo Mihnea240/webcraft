@@ -63,6 +63,7 @@ export class ChunkManager {
         this.chunkMaterial = new Three.MeshBasicNodeMaterial({
             transparent: false,
             wireframe: false,
+            side: Three.FrontSide
         });
         
         const pipeline = this.world.resourcePack?.pipeline;

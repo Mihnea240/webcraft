@@ -10,7 +10,7 @@ import { FACE_DIMMING_ARRAY } from './constants.tsl';
  * @param normalIndex TSL Node representing the face normal index (0..5)
  * @param faceDimming TSL Node representing whether directional dimming is enabled (0 or 1)
  */
-export const calculateVertexLighting = Fn(([blockLight, skyLight, cornerAo, normalIndex, faceDimming]) => {
+export const calculateVertexLighting = Fn(([blockLight, skyLight, cornerAo, normalIndex, faceDimming], _builder) => {
     // 1. Normalize light values (0.0 to 1.0)
     const normBlock = float(blockLight).div(15.0);
     const normSky = float(skyLight).div(15.0);

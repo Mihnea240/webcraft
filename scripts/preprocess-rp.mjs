@@ -1,6 +1,7 @@
 import fs from "fs";
 import JSZip from "jszip";
 import path from "path";
+import { JAVA_TO_BEDROCK_TEXTURE_MAP } from "./archetypes/base.mjs";
 import { mergeBlockDefinition } from "./archetypes/index.mjs";
 import { convertJavaBlockState } from "./java-blockstate-resolver.mjs";
 import { compileJavaModelsToBedrock } from "./java-model-resolver.mjs";
@@ -15,11 +16,20 @@ export const ACTIONS = {
     TRANSFORM: "transform"
 };
 
+export function stripJsonComments(str) {
+    return str.replace(/\\"|"(?:\\"|[^"])*"|(\/\/.*|\/\*[\s\S]*?\*\/)/g, (m, g) => g ? "" : m);
+}
+
 /**
  * Processor Rules for asset filtering and transformations.
  * Supports RegExp matching, KEEP, DELETE, and TRANSFORM actions with custom handlers.
  */
 export const rules = [
+    {
+        name: "manifests",
+        pattern: /^(?:(?:resource_pack|behavior_pack)\/)?manifest\.json$/,
+        action: ACTIONS.KEEP
+    },
     {
         name: "texture_definitions",
         // Keep terrain_texture, flipbook_textures, and item_texture JSONs
@@ -183,9 +193,15 @@ export async function runPipeline(inputPath = "./src/assets/rp.zip", outputPath 
     const { bedrockGeometries, blockDefinitions } = compileJavaModelsToBedrock(allModels, allBlockStates);
 
     // 2. Filter and transform assets from source pack using the regex rule pipeline
+    const candidatePaths = [];
     if (fs.existsSync(inputPath)) {
         console.log(`[Preprocessor] Filtering source pack from ${inputPath}...`);
-        const inputBuffer = fs.readFileSync(inputPath);
+        candidatePaths.push(inputPath);
+    }
+
+    for (const srcPath of candidatePaths) {
+        console.log(`[Preprocessor] Ingesting assets from ${srcPath}...`);
+        const inputBuffer = fs.readFileSync(srcPath);
         const sourceZip = await JSZip.loadAsync(inputBuffer);
 
         for (const [relativePath, fileEntry] of Object.entries(sourceZip.files)) {
@@ -236,39 +252,36 @@ export async function runPipeline(inputPath = "./src/assets/rp.zip", outputPath 
     for (const [name, blockDef] of blockDefinitions.entries()) {
         targetZip.file(`behavior_pack/blocks/${name}.json`, JSON.stringify(blockDef, null, 2));
     }
-    // 5. Ensure critical texture definition files exist
+
+    // 5. Augment texture definition files if present in the base pack
     const terrainTextureDest = "resource_pack/textures/terrain_texture.json";
-    if (!targetZip.file(terrainTextureDest)) {
-        const fallbackPath = "./legacy/resources/terrain_texture.json";
-        if (fs.existsSync(fallbackPath)) {
-            console.log(`[Preprocessor] Injected missing ${terrainTextureDest} from ${fallbackPath}`);
-            targetZip.file(terrainTextureDest, fs.readFileSync(fallbackPath));
-        } else {
-            console.warn(`[Preprocessor] Warning: ${fallbackPath} not found!`);
+    let terrainTextureObj = null;
+    if (targetZip.file(terrainTextureDest)) {
+        try {
+            const rawText = await targetZip.file(terrainTextureDest).async("text");
+            const cleanText = stripJsonComments(rawText).replace(/,\s*([}\]])/g, "$1");
+            terrainTextureObj = JSON.parse(cleanText);
+        } catch (err) {
+            console.warn(`[Preprocessor] Failed to parse ${terrainTextureDest}:`, err.message);
         }
     }
 
-    const flipbookDest = "resource_pack/textures/flipbook_textures.json";
-    if (!targetZip.file(flipbookDest)) {
-        const fallbackPath = "./legacy/resources/flipbook_textures.json";
-        if (fs.existsSync(fallbackPath)) {
-            console.log(`[Preprocessor] Injected missing ${flipbookDest} from ${fallbackPath}`);
-            targetZip.file(flipbookDest, fs.readFileSync(fallbackPath));
+    if (terrainTextureObj) {
+        terrainTextureObj.texture_data = terrainTextureObj.texture_data || {};
+        const blockPngFiles = Object.keys(targetZip.files).filter(f => f.startsWith("resource_pack/textures/blocks/") && f.endsWith(".png"));
+        for (const file of blockPngFiles) {
+            const baseName = path.basename(file, ".png");
+            const relPath = file.replace(/^resource_pack\//, "").replace(/\.png$/, "");
+            if (!terrainTextureObj.texture_data[baseName]) {
+                terrainTextureObj.texture_data[baseName] = { textures: relPath };
+            }
         }
-    }
-
-    // 6. Ensure manifests exist
-    if (!targetZip.file("resource_pack/manifest.json")) {
-        targetZip.file("resource_pack/manifest.json", JSON.stringify({
-            format_version: 2,
-            header: { name: "WebCraft Resource Pack", description: "Standard RP", version: [1, 0, 0] }
-        }, null, 2));
-    }
-    if (!targetZip.file("behavior_pack/manifest.json")) {
-        targetZip.file("behavior_pack/manifest.json", JSON.stringify({
-            format_version: 2,
-            header: { name: "WebCraft Behavior Pack", description: "Standard BP", version: [1, 0, 0] }
-        }, null, 2));
+        for (const [javaName, bedrockName] of Object.entries(JAVA_TO_BEDROCK_TEXTURE_MAP)) {
+            if (terrainTextureObj.texture_data[bedrockName] && !terrainTextureObj.texture_data[javaName]) {
+                terrainTextureObj.texture_data[javaName] = terrainTextureObj.texture_data[bedrockName];
+            }
+        }
+        targetZip.file(terrainTextureDest, JSON.stringify(terrainTextureObj, null, 2));
     }
 
     // 6. Compress and save final output

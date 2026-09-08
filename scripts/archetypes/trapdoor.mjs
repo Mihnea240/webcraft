@@ -3,28 +3,30 @@
  * Archetype for trapdoor blocks.
  */
 
+import { extractMaterialInstances } from "./base.mjs";
+
 export const pattern = /(?:^|_)?trapdoor(?:_.*)?$/;
 
-export function getComponents({ name }) {
-    const isOpen = name.includes("_open");
-    const isTop = name.includes("_top");
-
+export function build({ name, resolved }) {
     return {
-        components: {
-            "minecraft:custom_traits": {
-                archetype: "trapdoor",
-                isOpen,
-                isTop
-            }
-        },
-        permutations: [
-            {
-                condition: "query.block_property('minecraft:open_bit') == true",
-                components: {
-                    "minecraft:collision_box": false
+        "minecraft:block": {
+            description: {
+                identifier: `minecraft:${name}`
+            },
+            components: {
+                "minecraft:material_instances": extractMaterialInstances(resolved, name),
+                "minecraft:custom_traits": {
+                    archetype: "trapdoor"
                 }
-            }
-        ]
+            },
+            permutations: [
+                {
+                    condition: "query.block_property('minecraft:open_bit') == true",
+                    components: {
+                        "minecraft:collision_box": false
+                    }
+                }
+            ]
+        }
     };
 }
-

@@ -1,6 +1,6 @@
 /**
  * @file light_emission.mjs
- * Archetype for light-emitting blocks (torches, lanterns, fire, glowstone, froglights, etc.)
+ * Archetype enhancer for light-emitting blocks (torches, lanterns, fire, glowstone, froglights, etc.)
  */
 
 export const pattern = /(?:^|_)(?:torch|lantern|campfire|fire|froglight)$|^lava(?:_cauldron)?$|glowstone|sea_lantern|shroomlight|crying_obsidian|respawn_anchor|beacon|conduit|end_rod|candle.*lit|redstone_lamp_(?:lit|on)/;
@@ -31,7 +31,7 @@ const LIGHT_EMISSION_MAP = {
     conduit: 15
 };
 
-export function getComponents({ name }) {
+export function build({ name }) {
     let light = 0;
     for (const [key, val] of Object.entries(LIGHT_EMISSION_MAP)) {
         if (name === key || name.startsWith(key + "_") || name.endsWith("_" + key)) {
@@ -57,3 +57,4 @@ export function getComponents({ name }) {
     };
 }
 
+export const getComponents = build;

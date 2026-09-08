@@ -51,8 +51,8 @@ export class World {
 			scene.add(colorQuad);
 		}
 
-		const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
-		scene.add(ambientLight);
+		// const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+		// scene.add(ambientLight);
 
 		// Pre-compile terrain shader in background matching full scene state
 		if (this.chunkManager.chunkMaterial && this.resourcePack?.pipeline) {
@@ -158,7 +158,7 @@ export class World {
 function testWorld(world: World) {
 	let dirt: BlockDescriptor;
 	try {
-		dirt = world.getBlockDescriptor("minecraft:crafting_table");
+		dirt = world.getBlockDescriptor("minecraft:torch");
 	} catch {
 		console.warn("Dirt block not found in resource pack. Skipping test world generation.");
 		return;
@@ -167,8 +167,8 @@ function testWorld(world: World) {
 	console.log("Generating test world with dirt ground plane...", dirt);
 	// Place a dirt ground plane across chunks using the reusable cursor
 	const cursor = world.blockCursor;
-	for (let x = 0; x < 1; x++) {
-		for (let z = 0; z < 1; z++) {
+	for (let x = 0; x < 10; x++) {
+		for (let z = 0; z < 10; z++) {
 			cursor.setPosition(x, 0, z).setBlock(dirt);
 		}
 	}

@@ -3,28 +3,30 @@
  * Archetype for door blocks.
  */
 
+import { extractMaterialInstances } from "./base.mjs";
+
 export const pattern = /(?:^|_)?door(?:_.*)?$/;
 
-export function getComponents({ name }) {
-    const isOpen = name.includes("_open");
-    const isTop = name.includes("_top");
-
+export function build({ name, resolved }) {
     return {
-        components: {
-            "minecraft:custom_traits": {
-                archetype: "door",
-                isOpen,
-                isTop
-            }
-        },
-        permutations: [
-            {
-                condition: "query.block_property('minecraft:open_bit') == true",
-                components: {
-                    "minecraft:collision_box": false
+        "minecraft:block": {
+            description: {
+                identifier: `minecraft:${name}`
+            },
+            components: {
+                "minecraft:material_instances": extractMaterialInstances(resolved, name),
+                "minecraft:custom_traits": {
+                    archetype: "door"
                 }
-            }
-        ]
+            },
+            permutations: [
+                {
+                    condition: "query.block_property('minecraft:open_bit') == true",
+                    components: {
+                        "minecraft:collision_box": false
+                    }
+                }
+            ]
+        }
     };
 }
-

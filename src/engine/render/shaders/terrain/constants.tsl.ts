@@ -1,6 +1,16 @@
 
 import { array, mat3, vec2, vec3 } from 'three/tsl';
+import { array, float, mat3, vec2, vec3 } from 'three/tsl';
 import { Face } from "@utils/faces";
+
+export const FACE_DIMMING_ARRAY = array([
+    float(0.6), // 0: +X
+    float(1.0), // 1: +Y
+    float(0.8), // 2: +Z
+    float(0.8), // 3: -Z
+    float(0.5), // 4: -Y
+    float(0.6), // 5: -X
+]);
 
 
 export const CUBE_VERTICES_ARRAY = array([
