@@ -23,7 +23,7 @@ export class Player {
 		this._id = crypto.randomUUID();
 		this.canvasTarget = new THREE.CanvasTarget(webcraftPlayer.canvas);
 
-		this.camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+		this.camera = new THREE.PerspectiveCamera(75, 1, 0.1, 3000); 
 		this.camera.lookAt(new THREE.Vector3(0, 0, -1));
 
 		this.controls = new PointerLockControls(this.camera, webcraftPlayer);

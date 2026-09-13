@@ -8,64 +8,63 @@ import { ResourcePack } from '../resource_manager/RP';
 import * as Constants from "@engine/resource_manager/constants";
 import { storage, struct, texture3D, uv, vec3 } from 'three/tsl';
 
+import { TSLPacker } from 'bitpacker';
 import { ChunkDataStruct, CubeStruct, QuadStruct, RandomOffsetStruct, TextureStruct } from '../packing_schemas';
 
-export const TslCubeStruct = struct({
-    data: `array<u32, ${CubeStruct.bucketStride}>`,
+// --- Global TSLPacker instances for schemas ---
+export const quadPacker = new TSLPacker(QuadStruct, undefined, false);
+export const cubePacker = new TSLPacker(CubeStruct, undefined, false);
+export const texturePacker = new TSLPacker(TextureStruct, undefined, false);
+export const chunkDataPacker = new TSLPacker(ChunkDataStruct, undefined, false);
+export const randomOffsetPacker = new TSLPacker(RandomOffsetStruct, undefined, false);
+
+// --- Auto-generated TSL Storage Node Structs ---
+export const TslCubeType = struct({
+    data: 'array<vec4<u32>, 3>'
 }, "CubeStruct");
 
-export const TslTextureStruct = struct({
-    data: `array<u32, ${TextureStruct.bucketStride}>`,
-}, "TextureStruct");
 
+
+export const TslQuadType = quadPacker.getStorageBufferType() as "uvec4";
+export const TslTextureType = texturePacker.getStorageBufferType() as "uvec2";
 export const TslChunkDataStruct = struct({
-    data: `array<u32, ${ChunkDataStruct.bucketStride}>`,
+    x: "int",
+    y: "int",
+    z: "int",
 }, "ChunkDataStruct");
-
-export const TslRandomOffsetStruct = struct({
-    data: `array<u32, ${RandomOffsetStruct.bucketStride}>`,
-}, "RandomOffsetStruct");
-
-export const TslQuadStruct = struct({
-    data: `array<u32, ${QuadStruct.bucketStride}>`,
-}, "QuadStruct");
-
 
 export class RenderPipeline {
     // --- GPU Storage Attributes & TSL Storage Nodes ---
     public cubeBuffer!: Three.StorageBufferAttribute;
-    public cubesNode!: Three.StorageBufferNode<"struct">;
+    public cubesNode!: Three.StorageBufferNode<typeof TslCubeType>;
 
     public textureDescriptorsBuffer!: Three.StorageBufferAttribute;
-    public textureDescriptorsNode!: Three.StorageBufferNode<"struct">;
+    public textureDescriptorsNode!: Three.StorageBufferNode<typeof TslTextureType>;
 
     // Color & MERS Atlas Texture Bindings
     public terrainTexture!: Three.Data3DTexture;
 
     public indexBuffer!: Three.BufferAttribute;
-    // public dummyPositionBuffer: Three.BufferAttribute;
 
     constructor(
         public resourcePack: ResourcePack,
     ) {
         // this.dummyPositionBuffer = new Three.BufferAttribute(new Float32Array(Constants.QUAD_BUFFER_BLOCK_SIZE * 4 * 3), 3);
 
-        // 1. Initial minimal stubs (1 element each, total <60 bytes) allowing WebGPU
-        // pipeline precompilation to run immediately in parallel with the background worker
+        // 1. Initial minimal stubs (at least 2 elements so Three.js infers array<T> storage buffer)
         this.cubeBuffer = new Three.StorageBufferAttribute(
-            new Uint32Array(CubeStruct.bucketStride), 
+            new Uint32Array(CubeStruct.bucketStride * 2), 
             CubeStruct.bucketStride
         );
-        this.cubesNode = storage(this.cubeBuffer, TslCubeStruct, 4);
+        this.cubesNode = storage(this.cubeBuffer, TslCubeType, 1);
 
         this.textureDescriptorsBuffer = new Three.StorageBufferAttribute(
-            new Uint32Array(TextureStruct.bucketStride), 
+            new Uint32Array(TextureStruct.bucketStride * 2), 
             TextureStruct.bucketStride
         );
         this.textureDescriptorsNode = storage(
             this.textureDescriptorsBuffer,
-            TslTextureStruct,
-            4
+            TslTextureType, 1
         );
 
         // 2. Initial 3D atlas texture matching target atlas dimensions
@@ -77,12 +76,11 @@ export class RenderPipeline {
             atlasHeight,
             defaultLayers
         );
-        this.terrainTexture.minFilter = Three.NearestFilter;
+        this.terrainTexture.minFilter = Three.NearestMipmapLinearFilter;
         this.terrainTexture.magFilter = Three.NearestFilter;
-        this.terrainTexture.generateMipmaps = false;
         this.terrainTexture.needsUpdate = true;
 
-        this.indexBuffer = this.createIndexBuffer(Constants.QUAD_BUFFER_BLOCK_SIZE);
+        this.indexBuffer = this.createIndexBuffer(Constants.INITIAL_QUAD_BUFFER_SIZE / 4);
         this.indexBuffer.needsUpdate = true;
     }
 
@@ -128,6 +126,9 @@ export class RenderPipeline {
         }
 
         this.terrainTexture.image = { data: colorData, width: atlasWidth, height: atlasHeight, depth: layers };
+        this.terrainTexture.minFilter = Three.NearestMipmapLinearFilter;
+        this.terrainTexture.magFilter = Three.NearestFilter;
+        this.terrainTexture.generateMipmaps = true;
         this.terrainTexture.needsUpdate = true;
     }
 

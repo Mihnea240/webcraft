@@ -1,49 +1,37 @@
 import * as THREE from "three";
 
-const SQRT2 = Math.sqrt(2);
-const oneOverSqrt2 = 1 / SQRT2;
-
-function scaleTo10Bit(val: number) { 
-    const normalized = Math.max(-oneOverSqrt2, Math.min(oneOverSqrt2, val));
-    const zeroToOne = (normalized * SQRT2 + 1) * 0.5;
-    return Math.round(zeroToOne * 1023) & 0x3FF;
-}
-
 /**
- * Compressor function to pack a Three.js Quaternion into a 32-bit uint using the smallest-three method.
+ * Packs a Three.js Quaternion into a 32-bit uint using 4 quantized signed 8-bit components.
+ * Returns 0 if the rotation is identity (or negligible), allowing the GPU vertex shader to skip quaternion math entirely.
  */
 export function packQuaternion(q: THREE.Quaternion): number {
+    // Identity check (reserve 0u as identity flag)
+    if (Math.abs(q.x) < 1e-4 && Math.abs(q.y) < 1e-4 && Math.abs(q.z) < 1e-4 && Math.abs(Math.abs(q.w) - 1) < 1e-4) {
+        return 0;
+    }
+
     q.normalize();
-    
-    let x = q.x, y = q.y, z = q.z, w = q.w;
-    let absX = Math.abs(x), absY = Math.abs(y), absZ = Math.abs(z), absW = Math.abs(w);
-    
-    let maxVal = absX;
-    let maxIndex = 0; // 0: x, 1: y, 2: z, 3: w
-    
-    if (absY > maxVal) { maxVal = absY; maxIndex = 1; }
-    if (absZ > maxVal) { maxVal = absZ; maxIndex = 2; }
-    if (absW > maxVal) { maxVal = absW; maxIndex = 3; }
-    
-    let sign = 1;
-    if (maxIndex === 0 && x < 0) sign = -1;
-    if (maxIndex === 1 && y < 0) sign = -1;
-    if (maxIndex === 2 && z < 0) sign = -1;
-    if (maxIndex === 3 && w < 0) sign = -1;
-    
-    x *= sign; y *= sign; z *= sign; w *= sign;
-    
-    let a = 0, b = 0, c = 0;
-    if (maxIndex === 0) { a = y; b = z; c = w; }
-    else if (maxIndex === 1) { a = x; b = z; c = w; }
-    else if (maxIndex === 2) { a = x; b = y; c = w; }
-    else { a = x; b = y; c = z; }
-    
-    const uA = scaleTo10Bit(a);
-    const uB = scaleTo10Bit(b);
-    const uC = scaleTo10Bit(c);
-    
-    return ((maxIndex << 30) | (uA << 20) | (uB << 10) | uC) >>> 0;
+
+    let { x, y, z, w } = q;
+    if (w < 0) {
+        x = -x;
+        y = -y;
+        z = -z;
+        w = -w;
+    }
+
+    const toInt8 = (val: number) => {
+        const clamped = Math.max(-1, Math.min(1, val));
+        return Math.round(clamped * 127) & 0xFF;
+    };
+
+    const qx = toInt8(x);
+    const qy = toInt8(y);
+    const qz = toInt8(z);
+    const qw = toInt8(w);
+
+    const packed = ((qx << 24) | (qy << 16) | (qz << 8) | qw) >>> 0;
+    return packed === 0 ? 1 : packed;
 }
 
 const euler = new THREE.Euler();

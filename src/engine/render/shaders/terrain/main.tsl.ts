@@ -1,5 +1,7 @@
 import {
     Fn,
+    If,
+    sRGBTransferEOTF,
     texture3D,
     uint,
     uniform,
@@ -10,8 +12,14 @@ import {
 } from 'three/tsl';
 import * as Three from 'three/webgpu';
 
-import { ChunkDataStruct, CubeStruct, QuadStruct, TextureStruct } from '@engine/packing_schemas';
-import { TSLPacker } from 'bitpacker';
+import {
+    cubePacker,
+    quadPacker,
+    texturePacker,
+    TslChunkDataStruct,
+    TslQuadType,
+    TslTextureType
+} from '../../pipeline';
 
 import { CUBE_VERTICES_ARRAY, NORMALS_ARRAY, QUAD_UVS_ARRAY } from './constants.tsl';
 
@@ -19,10 +27,10 @@ import * as Constants from "@engine/resource_manager/constants";
 import { applyQuaternion, extractQuaternionFromPacked } from './transform.tsl';
 
 export interface TerrainShaderNodes {
-    quadsStorageNode: Three.StorageBufferNode<"struct">;
+    quadsStorageNode: Three.StorageBufferNode<typeof TslQuadType>;
     cubesStorageNode: Three.StorageBufferNode<"struct">;
-    texturesStorageNode: Three.StorageBufferNode<"struct">;
-    chunksStorageNode: Three.StorageBufferNode<"struct">;
+    texturesStorageNode: Three.StorageBufferNode<typeof TslTextureType>;
+    chunksStorageNode: Three.StorageBufferNode<typeof TslChunkDataStruct>;
     terrainTexture: Three.Data3DTexture;
 }
 
@@ -43,7 +51,7 @@ export function createTerrainMaterial(nodes: TerrainShaderNodes): Three.MeshBasi
     const material = new Three.MeshBasicNodeMaterial({
         transparent: false,
         wireframe: false,
-        side: Three.DoubleSide,
+        side: Three.FrontSide,
     });
     
 
@@ -56,51 +64,59 @@ export function createTerrainMaterial(nodes: TerrainShaderNodes): Three.MeshBasi
     // 1. VERTEX STAGE (Bitpacker Schema View Extraction)
     // =========================================================================
     const vertexNode = Fn(() => {
-        const quadId = quadOffsetUniform.add(vertexIndex.shiftRight(2)).toConst();
-        const quadData = nodes.quadsStorageNode.element(quadId).get('data');
-        const quadView = new TSLPacker(QuadStruct, quadData).view;
+        const quadId = quadOffsetUniform.add(vertexIndex.shiftRight(2)).toConst("quadId");
 
-        const blockLocalPosition = vec3(quadView.x, quadView.y, quadView.z).toConst();
-        const normalId = quadView.normal.toUint().toConst();
-        const geometryId = quadView.geometry_id.toConst();
-        const textureId = quadView.texture_id.toConst();
+        // 1. Bind storage nodes to global packers
+        quadPacker.setNode(nodes.quadsStorageNode.element(quadId).toConst("quadNode"));
+        const quadView = quadPacker.view;
+        
+        cubePacker.setNode((nodes.cubesStorageNode.element(quadView.geometry_id).get("data") as any).toConst("cubeDataNode"));
+        const cubeView = cubePacker.view;
 
-        const cubeData = nodes.cubesStorageNode.element(geometryId).get('data');
-        const cubeView = new TSLPacker(CubeStruct, cubeData).view;
+        texturePacker.setNode(nodes.texturesStorageNode.element(quadView.texture_id).toConst("textureNode"));
+        const textureView = texturePacker.view;
 
-        const textureData = nodes.texturesStorageNode.element(textureId).get('data');
-        const textureView = new TSLPacker(TextureStruct, textureData).view;
+        // 2. Vertex transformations
+        const blockLocalPosition = vec3(quadView.x, quadView.y, quadView.z).toConst("blockLocalPosition");
+        const normalId = quadView.normal.toUint().toConst("normalId");
 
-        const chunkData = nodes.chunksStorageNode.element(chunkOffsetUniform).get('data');
-        const chunkView = new TSLPacker(ChunkDataStruct, chunkData).view;
+        const quadVertexIndex = vertexIndex.bitAnd(3).toConst("quadVertexIndex");
+        const baseVertex = CUBE_VERTICES_ARRAY.element(normalId.mul(4).add(quadVertexIndex)).toConst("baseVertex");
+        const scale = vec3(cubeView.scale.get(0), cubeView.scale.get(1), cubeView.scale.get(2)).mul(1.0 / 16.0).toConst("scale");
+        const offset = vec3(cubeView.offset.get(0), cubeView.offset.get(1), cubeView.offset.get(2)).mul(1.0 / 16.0).toConst("offset");
+        const scaledVertex = baseVertex.mul(scale).toConst("scaledVertex");
+        const baseNormal = NORMALS_ARRAY.element(normalId).toConst("baseNormal");
 
-        const quadVertexIndex = vertexIndex.bitAnd(3).toConst();
-        const baseVertex = CUBE_VERTICES_ARRAY.element(normalId.mul(4).add(quadVertexIndex)).toConst();
-        const quaternion = extractQuaternionFromPacked(cubeView.rotation).toConst();
-        const scale = vec3(cubeView.scale.get(0), cubeView.scale.get(1), cubeView.scale.get(2)).mul(1.0 / 16.0).toConst();
-        const offset = vec3(cubeView.offset.get(0), cubeView.offset.get(1), cubeView.offset.get(2)).mul(1.0 / 16.0).toConst();
+        const rotPacked = cubeView.rotation.toUint().toConst("rotPacked");
+        const transformedVertex = vec3().toVar();
+        const transformedNormal = vec3().toVar();
 
-        const transformedVertex = applyQuaternion(quaternion, baseVertex.mul(scale)).add(offset).toConst();
-        // const transformedVertex = baseVertex.mul(scale).add(offset).toConst();
-        const finalVertex = transformedVertex.add(blockLocalPosition).toConst();
+        If(rotPacked.equal(uint(0)), () => {
+            transformedVertex.assign(scaledVertex.add(offset));
+            transformedNormal.assign(baseNormal);
+        }).Else(() => {
+            const quaternion = extractQuaternionFromPacked(rotPacked);
+            transformedVertex.assign(applyQuaternion(quaternion, scaledVertex).add(offset));
+            transformedNormal.assign(applyQuaternion(quaternion, baseNormal));
+        });
+
+        const finalVertex = transformedVertex.add(blockLocalPosition).toConst("finalVertex");
 
         const uvDescriptor = cubeView.uvs.get(normalId);
-        const cornerUv = QUAD_UVS_ARRAY.element(quadVertexIndex).toConst();
-        const tileUv = vec2(textureView.atlas_u, textureView.atlas_v).mul(16.0).add(vec2(8, 8)).toConst();
+        const cornerUv = QUAD_UVS_ARRAY.element(quadVertexIndex).toConst("cornerUv");
+        const tileUv = vec2(textureView.atlas_u, textureView.atlas_v).mul(16.0).add(vec2(8, 8)).toConst("tileUv");
 
-        const uvOffset = vec2(uvDescriptor.u, uvDescriptor.v).toConst();
-        const uvScale = vec2(uvDescriptor.w, uvDescriptor.h).toConst();
-        const localUv = cornerUv.mul(uvScale).add(uvOffset).toConst();
+        const uvOffset = vec2(uvDescriptor.u, uvDescriptor.v).toConst("uvOffset");
+        const uvScale = vec2(uvDescriptor.w, uvDescriptor.h).toConst("uvScale");
+        const localUv = cornerUv.mul(uvScale).add(uvOffset).toConst("localUv");
         
         const uv = tileUv.add(localUv).mul(vec2(
             1.0 / Constants.ATLAS_DIMENSIONS[0],
             1.0 / Constants.ATLAS_DIMENSIONS[1]
-        )).toConst();
+        )).toConst("finalUv");
         
-        vUv3D.assign(uv);
-         
-        const normal = applyQuaternion(quaternion, NORMALS_ARRAY.element(normalId)).toConst();
-        vNormal.assign(normal);
+        vUv3D.assign(vec3(uv, textureView.atlas_w.toFloat()));
+        vNormal.assign(transformedNormal);
  
         return finalVertex;
     });
@@ -115,22 +131,10 @@ export function createTerrainMaterial(nodes: TerrainShaderNodes): Three.MeshBasi
 
         // Apply interpolated vertex lighting & shadows
         // const finalRgb = texColor.rgb.mul(vLighting);
+        const linearRgb = sRGBTransferEOTF(texColor.rgb) as Three.Node<"vec3">;
 
-        return texColor; // Visible white color for test
-    });
 
-    const testVertexNode = Fn(() => {
-        const quadId = quadOffsetUniform.add(vertexIndex.shiftRight(2)).toConst();
-        const quadData = nodes.quadsStorageNode.element(quadId).get('data');
-        const quadView = new TSLPacker(QuadStruct, quadData).view;
-
-        const blockLocalPosition = vec3(quadView.x, quadView.y, quadView.z).toConst();
-        const normalId = quadView.normal.toUint().toConst();
-
-        const cubeVertex = CUBE_VERTICES_ARRAY.element(normalId.mul(4).add(vertexIndex.bitAnd(3))).toConst();
-        const finalVertex = cubeVertex.add(blockLocalPosition).toConst();
-
-        return finalVertex;
+        return linearRgb; // Visible white color for test
     });
 
     material.positionNode = vertexNode();

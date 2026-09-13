@@ -37,6 +37,7 @@ export class World {
 		const { scene, renderer } = this.sceneManager;
 		await renderer.init();
 
+		// scene.background = new THREE.Color(0x87ceeb); // Sky blue background
 		renderer.shadowMap.enabled = false;
 
 		// Display color texture atlas layer on plane (layer 0)
@@ -143,8 +144,8 @@ export class World {
 
 	// Placeholder for future world loading logic
 	loadWorld() {
-		for (let i = 0; i < 1; i++) {
-			for (let j = 0; j < 1; j++) {
+		for (let i = 0; i < 10; i++) {
+			for (let j = 0; j < 10; j++) {
 				const chunk = new Chunk(this, [i, 0, j]);
 				this.chunkManager.addChunk(chunk);
 			}
@@ -156,20 +157,23 @@ export class World {
 
 
 function testWorld(world: World) {
-	let dirt: BlockDescriptor;
-	try {
-		dirt = world.getBlockDescriptor("minecraft:torch");
-	} catch {
-		console.warn("Dirt block not found in resource pack. Skipping test world generation.");
-		return;
-	}
+	const blocks = [
+		world.getBlockDescriptor("minecraft:magma_block"),
+		world.getBlockDescriptor("minecraft:dirt"),
+		world.getBlockDescriptor("minecraft:stone"),
+		world.getBlockDescriptor("minecraft:warped_nylium"),
+		world.getBlockDescriptor("minecraft:diamond_block"),
+		world.getBlockDescriptor("minecraft:warped_stairs")
+	]
 
-	console.log("Generating test world with dirt ground plane...", dirt);
 	// Place a dirt ground plane across chunks using the reusable cursor
 	const cursor = world.blockCursor;
-	for (let x = 0; x < 10; x++) {
-		for (let z = 0; z < 10; z++) {
-			cursor.setPosition(x, 0, z).setBlock(dirt);
+	for (let x = 0; x < 16; x++) {
+		for (let z = 0; z < 16; z++) {
+			for (let y = 0; y < 16; y++) {
+				const pick = Math.floor(Math.random() * blocks.length);
+				cursor.setPosition(x, y, z).setBlock(blocks[pick]);
+			}
 		}
 	}
 }

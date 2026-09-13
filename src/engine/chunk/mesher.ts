@@ -12,7 +12,7 @@ export class ChunkMesher {
 
     private writePointer = 0;
     quadBuffer = new Uint32Array(Constants.INITIAL_QUAD_BUFFER_SIZE / 4);
-    packer = new DataViewPacker(QuadStruct, true, true);
+    packer = new DataViewPacker(QuadStruct, false);
 
     constructor() {
         this.packer.setBuffer(this.quadBuffer.buffer);

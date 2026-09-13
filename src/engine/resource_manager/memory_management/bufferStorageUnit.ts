@@ -13,8 +13,7 @@ export class BufferStorageUnit<TSchema extends Struct<any>, MetaType> implements
     constructor(schema: TSchema, initialSize: number = 4096, public useMetadata: boolean = true) {
         this.elementStride = schema.stride;
         this._buffer = new ArrayBuffer(initialSize * this.elementStride);
-        this.packer = new DataViewPacker(schema);
-        this.packer = new DataViewPacker(schema, true, true);
+        this.packer = new DataViewPacker(schema, false);
         this.packer.setBuffer(this._buffer);
     }
 

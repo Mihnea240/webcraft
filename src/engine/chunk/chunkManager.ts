@@ -4,20 +4,14 @@ import { World } from "../world";
 import { ChunkDataStruct, QuadStruct } from "../packing_schemas";
 
 import * as Constants from "@engine/resource_manager/constants";
-import { struct } from "three/tsl";
-import * as Three from "three/webgpu";
 import { createTerrainMaterial } from "../render/shaders/terrain/main.tsl";
 import { Chunk, ChunkState, getChunkSpatialKey } from "./chunk";
 import { ChunkLoader } from "./chunkLoaders/base";
 import { ChunkMesher } from "./mesher";
 
-const TslQuadStruct = struct({
-    data: `array<u32, ${QuadStruct.bucketStride}>`,
-}, "QuadStruct");
+import * as Three from 'three/webgpu';
 
-const TslChunkDataStruct = struct({
-    data: `array<u32, ${ChunkDataStruct.bucketStride}>`,
-}, "ChunkDataStruct");
+import { TslChunkDataStruct, TslQuadType } from "../render/pipeline";
 
 const ChunkBoundingBox = new Three.Box3(
     new Three.Vector3(0, 0, 0),
@@ -32,8 +26,8 @@ export class ChunkManager {
     quadBuffer: Three.StorageBufferAttribute;
     chunkBuffer: Three.StorageBufferAttribute;
 
-    quadNode: Three.StorageBufferNode<"struct">;
-    chunkNode: Three.StorageBufferNode<"struct">;
+    quadNode: Three.StorageBufferNode<typeof TslQuadType>;
+    chunkNode: Three.StorageBufferNode<typeof TslChunkDataStruct>;
 
     chunkMaterial!: Three.MeshBasicNodeMaterial;
 
@@ -53,19 +47,13 @@ export class ChunkManager {
             ChunkDataStruct.bucketStride
         );
 
-        this.quadNode = new Three.StorageBufferNode(this.quadBuffer, TslQuadStruct);
+        this.quadNode = new Three.StorageBufferNode(this.quadBuffer, TslQuadType);
         this.chunkNode = new Three.StorageBufferNode(this.chunkBuffer, TslChunkDataStruct);
 
         this.initMaterial();
     }
 
     initMaterial() {
-        this.chunkMaterial = new Three.MeshBasicNodeMaterial({
-            transparent: false,
-            wireframe: false,
-            side: Three.FrontSide
-        });
-        
         const pipeline = this.world.resourcePack?.pipeline;
         if (!pipeline) return;
 
@@ -152,7 +140,7 @@ export class ChunkManager {
                 this.quadBuffer.set(quadBuffer, meta.quadOffset * QuadStruct.bucketStride);
                 this.quadBuffer.addUpdateRange(meta.quadOffset * QuadStruct.bucketStride, size * QuadStruct.bucketStride);
             }
-            this.chunkBuffer.addUpdateRange(chunkId * ChunkDataStruct.bucketStride, ChunkDataStruct.bucketStride) ;
+            this.chunkBuffer.addUpdateRange(chunkId * ChunkDataStruct.bucketStride, ChunkDataStruct.bucketStride);
 
             // Manage Three.Mesh and BufferGeometry via ChunkMeshMetadata
             if (!meta.mesh) {
