@@ -36,14 +36,13 @@ export const TslChunkDataStruct = struct({
 export class RenderPipeline {
     // --- GPU Storage Attributes & TSL Storage Nodes ---
     public cubeBuffer!: Three.StorageBufferAttribute;
-    public cubesNode!: Three.StorageBufferNode<typeof TslCubeType>;
+    public cubesNode!: Three.StorageBufferNode<"struct">;
 
     public textureDescriptorsBuffer!: Three.StorageBufferAttribute;
     public textureDescriptorsNode!: Three.StorageBufferNode<typeof TslTextureType>;
 
     // Color & MERS Atlas Texture Bindings
     public terrainTexture!: Three.Data3DTexture;
-
     public indexBuffer!: Three.BufferAttribute;
 
     constructor(

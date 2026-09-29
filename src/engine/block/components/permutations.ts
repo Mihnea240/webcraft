@@ -1,3 +1,4 @@
+import { ResourcePack } from "src/engine/resource_manager/RP";
 import { componentRegistry } from "../componentRegistry";
 import type { BlockType } from "../type";
 import { BlockComponent } from "./base";
@@ -36,7 +37,11 @@ export class BlockPermutations extends BlockComponent {
         return instance;
     }
 
-    bindToRp() {}
+    bindToRp(type: BlockType, rp: ResourcePack) {
+        for (const comp of this.components()) {
+            comp.bindToRp(type, rp);
+        }
+    }
 
     *components() {
         yield* this.rules.values().flatMap(rule => rule.components); 

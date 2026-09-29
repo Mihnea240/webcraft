@@ -1,6 +1,7 @@
 import { popcount32 } from "@engine/utils/popcount";
 import { BlockDefinitions } from "src/bedrock-types/bp/blocks/blocks";
 import { BlockPermutation } from "src/engine/resource_manager/registry/blockTypeRegistry";
+import { ResourcePack } from "../resource_manager/RP";
 import { componentRegistry } from "./componentRegistry";
 import { BlockComponent } from "./components/base";
 import { MenuCategory } from "./components/menuCategory";
@@ -76,11 +77,9 @@ export class BlockType {
         }
     }
 
-    bindToRp(rp: any) {
-        this.states?.bindToRp(this, rp);
-        for (const comp of this.permutations.components()) {
-            comp.bindToRp(this, rp);
-        }
+    bindToRp(rp: ResourcePack) {
+        this.states.bindToRp(this, rp);
+        this.permutations.bindToRp(this, rp);
     }
 
     /** Dispatches a batch of changed state indices to all interested component listeners */

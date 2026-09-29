@@ -27,6 +27,7 @@ export class BlockGeometry extends BlockComponent {
     public identifier: string = "";
     public boneVisibility?: Record<string, boolean | string>;
     public uv_lock: boolean | string[] = false;
+    public cullingLayer: string = "default";
 
     modelId: number = 0;
     boneData: BoneData[] = [];
@@ -40,6 +41,7 @@ export class BlockGeometry extends BlockComponent {
         this.identifier = geometry.identifier!;
         this.boneVisibility = geometry.bone_visibility;
         this.uv_lock = geometry.uv_lock || false;
+        this.cullingLayer = geometry.culling_layer || "default";
     }
 
     bindToRp(blockType: BlockType, rp: ResourcePack) {
