@@ -65,14 +65,14 @@ export default class Faces {
 		"right", "top", "front", "back", "bottom", "left"
 	] as const;
 
-	static readonly Vector: Record<Face, [number, number, number]> = {
-		[Face.RIGHT]: [1, 0, 0],
-		[Face.LEFT]: [-1, 0, 0],
-		[Face.TOP]: [0, 1, 0],
-		[Face.BOTTOM]: [0, -1, 0],
-		[Face.FRONT]: [0, 0, 1],
-		[Face.BACK]: [0, 0, -1],
-	};
+	static readonly Vector: Array<[number, number, number]> = [
+		[1, 0, 0],   // RIGHT / EAST
+		[0, 1, 0],   // TOP / UP
+		[0, 0, 1],   // FRONT / SOUTH
+		[0, 0, -1],  // BACK / NORTH
+		[0, -1, 0],  // BOTTOM / DOWN
+		[-1, 0, 0]   // LEFT / WEST
+	]
 
 	/**
 	 * Converts a face enum value to a 3D offset direction vector.

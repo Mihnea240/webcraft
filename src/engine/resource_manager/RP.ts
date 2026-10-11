@@ -10,6 +10,7 @@ import { WorkerEntryPoint } from './workerEntryPoint';
 
 import { RenderPipeline } from '@engine/render/pipeline';
 import { BlockMapper } from './parsers/blockMapper';
+import { CullingLayerRegistry, CullingRegistry } from './registry/cullingRegistry';
 
 export interface ResourcePackData {
     name: string;
@@ -52,6 +53,9 @@ export class ResourcePack {
         this.registries.set(BlockModelRegistry, new BlockModelRegistry());
         this.registries.set(BlockTypeRegistry, new BlockTypeRegistry());
         this.registries.set(BlockPermutationRegistry, new BlockPermutationRegistry());
+
+        this.registries.set(CullingLayerRegistry, new CullingLayerRegistry());
+        this.registries.set(CullingRegistry, new CullingRegistry());
 
         this.pipeline = new RenderPipeline(this);
     }

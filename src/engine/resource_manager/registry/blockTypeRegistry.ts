@@ -22,8 +22,8 @@ export class BlockPermutation {
     ) {
     }
 
-    get bakedGeometry(): BakedGeometry | null {
-        return (this.components[0] as unknown as BakedGeometry) || null;
+    get bakedGeometry(): BakedGeometry{
+        return (this.components[0] as unknown as BakedGeometry);
     }
 
     getComponentById(blockType: BlockType, id: number): BlockComponent | null {
@@ -113,7 +113,9 @@ export class BlockTypeRegistry extends ResourceRegistry<BlockType, void, string>
             }
         }
 
-        permutation.components[0] = new BakedGeometry(bakedCubes) as any; 
+        const bakedGeo = (permutation.components[0] = new BakedGeometry(bakedCubes) as any);
+        bakedGeo.cullingLayer = geometry.cullingLayerId;
+        bakedGeo.cullingId = geometry.cullingId;
     }
 }
 

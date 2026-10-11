@@ -12,6 +12,7 @@ import { ChunkMesher } from "./mesher";
 import * as Three from 'three/webgpu';
 
 import { TslChunkDataStruct, TslQuadType } from "../render/pipeline";
+import Faces from "../utils/faces";
 
 const ChunkBoundingBox = new Three.Box3(
     new Three.Vector3(0, 0, 0),
@@ -76,6 +77,11 @@ export class ChunkManager {
                 }
             }
         }
+    }
+
+    getChunkNeighbors(chunk: Chunk): (Chunk | undefined)[] {
+        const [x, y, z] = chunk.worldPosition;
+        return Faces.Vector.map(([dx, dy, dz]) => this.getChunkAt(x + dx, y + dy, z + dz));
     }
 
 

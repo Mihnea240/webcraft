@@ -5,6 +5,7 @@ import { BlockComponent } from "./base";
 
 import { Geometry } from "@bedrock-types/bp/blocks/blocks";
 import { BlockModelRegistry } from "src/engine/resource_manager/registry";
+import { CullingLayerRegistry, CullingRegistry } from "src/engine/resource_manager/registry/cullingRegistry";
 
 export class MolangEntry {
     condition: string;
@@ -28,8 +29,11 @@ export class BlockGeometry extends BlockComponent {
     public boneVisibility?: Record<string, boolean | string>;
     public uv_lock: boolean | string[] = false;
     public cullingLayer: string = "default";
+    public cullingRule: string | undefined;
 
     modelId: number = 0;
+    cullingId: number = 0;
+    cullingLayerId: number = 0;
     boneData: BoneData[] = [];
 
     fromJson(geometry: Geometry) {
@@ -42,10 +46,13 @@ export class BlockGeometry extends BlockComponent {
         this.boneVisibility = geometry.bone_visibility;
         this.uv_lock = geometry.uv_lock || false;
         this.cullingLayer = geometry.culling_layer || "default";
+        this.cullingRule = geometry.culling;
     }
 
     bindToRp(blockType: BlockType, rp: ResourcePack) {
         const modelRegistry = rp.get(BlockModelRegistry);
+        const cullingLayerRegistry = rp.get(CullingLayerRegistry);
+
         let modelId = modelRegistry.keyToId(this.identifier);
         if (modelId === undefined) {
             modelId = 0;
@@ -83,6 +90,11 @@ export class BlockGeometry extends BlockComponent {
                 this.boneData[boneIndex].uv_locked = true;
             }
         }
+
+        this.cullingLayerId = cullingLayerRegistry.push(this.cullingLayer);
+
+        const cullingRegistry = rp.get(CullingRegistry);
+        this.cullingId = cullingRegistry.moldToModel(this.cullingRule || this.identifier, model.boneNameToId);
     }
 }
 

@@ -15,5 +15,8 @@ export const QUAD_BUFFER_BLOCK_SIZE = 4096; //4096 or 256 quads units for the al
 
 //Chunk limits
 export const CHUNK_SIZE = 16;
+export const Chunk_LOG2_SIZE = 4; // log2(CHUNK_SIZE)
 export const CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 export const INITIAL_CHUNK_BUFFER_SIZE = 4096 * 4; // 4096 chunks, 4 u32s each
+
+export const MESHING_LAYERS_MAX = 8; //Max number of meshing layers per chunk

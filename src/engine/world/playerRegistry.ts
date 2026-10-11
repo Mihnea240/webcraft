@@ -1,4 +1,3 @@
-import Player from "../player/player";
 import { Player } from "../player/player";
 
 export class PlayerRegistry{

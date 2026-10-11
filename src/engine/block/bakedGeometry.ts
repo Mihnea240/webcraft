@@ -1,3 +1,5 @@
+import { CullingMode } from "../resource_manager/registry/cullingRegistry";
+
 export interface BakedCube {
     /** Index in CubeGeometryRegistry */
     cubeId: number;
@@ -8,6 +10,11 @@ export interface BakedCube {
 }
 
 export class BakedGeometry {
+    public cullingLayer: number = 0;
+    public cullingId: number = CullingMode.NONE;
     constructor(public cubes: BakedCube[] = []) {}
-}
 
+    public isSolid(): boolean {
+        return this.cullingId > CullingMode.NONE && this.cullingId < CullingMode.CUSTOM_START;
+    }
+}

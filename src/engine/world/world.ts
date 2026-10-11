@@ -168,9 +168,9 @@ function testWorld(world: World) {
 
 	// Place a dirt ground plane across chunks using the reusable cursor
 	const cursor = world.blockCursor;
-	for (let x = 0; x < 16; x++) {
-		for (let z = 0; z < 16; z++) {
-			for (let y = 0; y < 16; y++) {
+	for (let x = 0; x < 32; x++) {
+		for (let z = 0; z < 32; z++) {
+			for (let y = 0; y < 32; y++) {
 				const pick = Math.floor(Math.random() * blocks.length);
 				cursor.setPosition(x, y, z).setBlock(blocks[pick]);
 			}

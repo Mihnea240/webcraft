@@ -115,4 +115,14 @@ export class Chunk {
         this.markDirty();
     }
 
+    getPallet(x: number, y: number, z: number) {
+        if (!this.data) return undefined;
+
+        return this.data.get(x, y, z);
+    }
+
+    getPermutation(x: number, y: number, z: number) {
+        const palletId = this.getPallet(x, y, z)!;
+        return this.pallet.getPermutation(palletId);
+    }    
 }
