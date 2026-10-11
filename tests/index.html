@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>WebCraft Resource Pack Loading Benchmark</title>
+	<style>
+		body {
+			background-color: #111;
+			color: #eee;
+			font-family: monospace;
+			padding: 20px;
+			max-width: 800px;
+			margin: 0 auto;
+		}
+		h1 {
+			color: #39ff14;
+			border-bottom: 1px solid #333;
+			padding-bottom: 10px;
+		}
+		.log-entry {
+			padding: 6px 10px;
+			border-radius: 4px;
+			margin-bottom: 8px;
+			background: #1e1e1e;
+			border-left: 4px solid #555;
+		}
+		.log-info { border-left-color: #00bcd4; }
+		.log-success { border-left-color: #4caf50; }
+		.log-warning { border-left-color: #ff9800; }
+		.time-value {
+			float: right;
+			color: #39ff14;
+			font-weight: bold;
+		}
+		.total-value {
+			font-size: 1.2em;
+			color: #ff007f;
+		}
+		#metrics {
+			margin-top: 30px;
+			padding: 20px;
+			background: #181818;
+			border-radius: 6px;
+			border: 1px solid #333;
+		}
+	</style>
+	<!-- Bootstrap early pre-loader -->
+	<script type="module" src="./bootstrap.ts"></script>
+</head>
+<body>
+	<h1>WebCraft Loader Benchmark</h1>
+	<p>Testing the persistent background Web Worker on a 140MB resource pack zip.</p>
+
+	<div id="logs">
+		<div class="log-entry log-info">Page parsed. Worker initialized early in &lt;head&gt;.</div>
+	</div>
+
+	<div id="metrics" style="display: none;">
+		<h3>Load Breakdown:</h3>
+		<div class="log-entry log-success">Fetch Zip: <span id="fetch-time" class="time-value">0ms</span></div>
+		<div class="log-entry log-success">Zip Headers Extraction: <span id="headers-time" class="time-value">0ms</span></div>
+		<div class="log-entry log-success">Metadata (JSON) Parsing: <span id="metadata-time" class="time-value">0ms</span></div>
+		<div class="log-entry log-success">Off-Thread Texture Stitching: <span id="stitch-time" class="time-value">0ms</span></div>
+		<hr style="border: 0; border-top: 1px solid #333; margin: 15px 0;">
+		<div class="log-entry log-success" style="background: #25121e;">
+			<strong>TOTAL LOADING TIME</strong>: <span id="total-time" class="time-value total-value">0ms</span>
+		</div>
+	</div>
+
+	<!-- Main benchmark execution -->
+	<script type="module" src="./benchmark.ts"></script>
+</body>
+</html>
