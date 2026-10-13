@@ -1,5 +1,6 @@
 import { Chunk } from "@engine/chunk/";
 import { BlockDescriptor } from "../resource_manager/registry/blockTypeRegistry";
+import Faces from "../utils/faces";
 import { World } from "../world";
 import { BlockDescriptorView } from "./blockDescriptorView";
 
@@ -80,6 +81,11 @@ export class BlockRefrence {
 
         this.setPosition(this.worldX + dx, this.worldY + dy, this.worldZ + dz);
         return true;
+    }
+
+    stepInFace(face: number, distance: number): boolean {
+        const normal = Faces.Normals[face];
+        return this.step(normal[0] * distance, normal[1] * distance, normal[2] * distance);
     }
 
     getDescriptor(): BlockDescriptor | undefined {

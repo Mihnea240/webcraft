@@ -10,11 +10,14 @@ import { BlockRefrence } from "@engine/block/blockRefrence";
 import { Chunk } from "../chunk";
 import { ChunkManager } from "../chunk/chunkManager";
 import { BlockDescriptor, BlockPermutationRegistry, BlockTypeRegistry } from "../resource_manager/registry/blockTypeRegistry";
+import { Raycaster } from "./dda";
 
 export class World {
 	playerRegistry = new PlayerRegistry();
 	sceneManager = new SceneManager();
 	chunkManager: ChunkManager;
+	rayCaster = new Raycaster(this);
+
 	readonly blockCursor: BlockRefrence;
 
 	public resourcePack!: ResourcePack;
@@ -24,6 +27,7 @@ export class World {
 	constructor() {
 		this.chunkManager = new ChunkManager(this);
 		this.blockCursor = new BlockRefrence(this);
+
 	}
 
 	setResourcePack(resourcePack: ResourcePack) {
@@ -59,11 +63,6 @@ export class World {
 		if (this.chunkManager.chunkMaterial && this.resourcePack?.pipeline) {
 			this.resourcePack.pipeline.precompile(renderer, this.chunkManager.chunkMaterial, scene).catch(console.error);
 		}
-
-		// Helpers: Coordinate axes (X=Red, Y=Green, Z=Blue) & ground grid
-		const axesHelper = new THREE.AxesHelper(16);
-		axesHelper.position.set(0, 0.02, 0);
-		scene.add(axesHelper);
 
 		const gridHelper = new THREE.GridHelper(64, 64, 0xff4444, 0x444444);
 		gridHelper.position.set(16, 0.01, 16);
@@ -115,9 +114,7 @@ export class World {
 		const permutationRegistry = this.resourcePack.get(BlockPermutationRegistry);
 
 		let typeId = typeRegistry.keyToId(name);
-		if (typeId === undefined && !name.includes(":")) {
-			typeId = typeRegistry.keyToId(`minecraft:${name}`);
-		}
+
 		if (typeId === undefined) {
 			throw new Error(`BlockType not found for "${name}"`);
 		}
@@ -170,7 +167,9 @@ function testWorld(world: World) {
 	const cursor = world.blockCursor;
 	for (let x = 0; x < 32; x++) {
 		for (let z = 0; z < 32; z++) {
-			for (let y = 0; y < 32; y++) {
+			const height = Math.sin((x / 32) * Math.PI * 2) * 3 + 5; // Example height function
+
+			for (let y = height-1; y < height; y++) {
 				const pick = Math.floor(Math.random() * blocks.length);
 				cursor.setPosition(x, y, z).setBlock(blocks[pick]);
 			}

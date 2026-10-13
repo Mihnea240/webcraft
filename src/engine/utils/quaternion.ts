@@ -40,3 +40,22 @@ const quaternion = new THREE.Quaternion();
 export function anglesToQuaternion(angles: THREE.Vector3) { 
     return quaternion.setFromEuler(euler.set(angles.x * deg2Rad, angles.y * deg2Rad, angles.z * deg2Rad, "YXZ"));
 }
+
+
+export function unpackQuaternion(packed: number, quaternion: THREE.Quaternion = new THREE.Quaternion()): THREE.Quaternion {
+    if (packed === 0) {
+        return quaternion.set(0, 0, 0, 1);
+    }
+
+    const toFloat = (val: number) => {
+        const signed = val > 127 ? val - 256 : val;
+        return signed / 127;
+    };
+
+    const qx = toFloat((packed >> 24) & 0xFF);
+    const qy = toFloat((packed >> 16) & 0xFF);
+    const qz = toFloat((packed >> 8) & 0xFF);
+    const qw = toFloat(packed & 0xFF);
+
+    return quaternion.set(qx, qy, qz, qw).normalize();
+}

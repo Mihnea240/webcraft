@@ -65,7 +65,7 @@ export default class Faces {
 		"right", "top", "front", "back", "bottom", "left"
 	] as const;
 
-	static readonly Vector: Array<[number, number, number]> = [
+	static readonly Normals: Array<[number, number, number]> = [
 		[1, 0, 0],   // RIGHT / EAST
 		[0, 1, 0],   // TOP / UP
 		[0, 0, 1],   // FRONT / SOUTH
@@ -78,7 +78,7 @@ export default class Faces {
 	 * Converts a face enum value to a 3D offset direction vector.
 	 */
 	static toVec3(face_enum: Face): [number, number, number] {
-		return Faces.Vector[face_enum];
+		return Faces.Normals[face_enum];
 	}
 
 	/**

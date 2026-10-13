@@ -20,13 +20,12 @@
     "jszip": "^3.10.1",
     "molang": "^2.0.1",
     "stats.js": "^0.17.0",
-    "three": "^0.185.1",
+    "three": "^0.186.1",
     "upng-js": "^2.1.0",
     "web-components": "file:../web-components"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
-    "@types/three": "^0.185.1",
     "@types/upng-js": "^2.1.5",
     "@webgpu/types": "^0.1.65",
     "glob": "^13.0.6",

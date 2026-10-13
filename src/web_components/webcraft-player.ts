@@ -78,17 +78,18 @@ export class WebcraftPlayer extends HTMLElement {
 	}
 
 	@event("keydown")
-	onKeyDown(e: KeyboardEvent) {
-		this.player.handleKeyDown(e);
+	onKeyDown(ev: KeyboardEvent) {
+		this.player.handleKeyDown(ev);
 	}
 
 	@event("keyup", { target: () => window })
-	onKeyUp(e: KeyboardEvent) {
-		this.player.handleKeyUp(e);
+	onKeyUp(ev: KeyboardEvent) {
+		this.player.handleKeyUp(ev);
 	}
 
 	@event("click")
-	onClick() {
+	onClick(ev: MouseEvent) {
+		this.player.handlePress(ev);
 		this.player.controls.lock();
 	}
 

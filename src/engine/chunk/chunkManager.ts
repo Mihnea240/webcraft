@@ -81,7 +81,7 @@ export class ChunkManager {
 
     getChunkNeighbors(chunk: Chunk): (Chunk | undefined)[] {
         const [x, y, z] = chunk.worldPosition;
-        return Faces.Vector.map(([dx, dy, dz]) => this.getChunkAt(x + dx, y + dy, z + dz));
+        return Faces.Normals.map(([dx, dy, dz]) => this.getChunkAt(x + dx, y + dy, z + dz));
     }
 
 
