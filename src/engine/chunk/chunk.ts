@@ -104,6 +104,7 @@ export class Chunk {
         }
 
         this.data!.set(x, y, z, palletId);
+        console.log(`Placed block at (${x}, ${y}, ${z}) with descriptor ${descriptor} and palletId ${palletId}, ${this.data!.get(x, y, z)}`);
         this.markDirty();
     }
 

@@ -38,8 +38,14 @@ export class BlockPermutation {
     }
 }
 
-/** Registry for static BlockType definitions (string name -> typeId) */
 export class BlockTypeRegistry extends ResourceRegistry<BlockType, void, string> {
+    constructor(parent?: BlockTypeRegistry) {
+        super(parent);
+        if (!parent) {
+            this.push("air", new BlockType());
+        }
+    }
+
     createStorageUnit() {
         return new ArrayStorageUnit<BlockType, void>(1024, true);
     }

@@ -59,10 +59,15 @@ export abstract class ResourceRegistry<ElementType, MetaType = void, KeyType = s
     }
 
     /** Clones an existing element, registers it under a new key, and returns the new ID. */
-    public pushClone(key: KeyType, id: number): number {
+    public clone(newKey: KeyType, id: number): number {
         const newId = this.addClone(id);
-        this.keyToIdMap.set(key, newId);
+        this.keyToIdMap.set(newKey, newId);
         return newId;
+    }
+
+    /** Clones an existing element, registers it under a new key, and returns the new ID. */
+    public pushClone(key: KeyType, id: number): number {
+        return this.clone(key, id);
     }
 
     /**
@@ -84,44 +89,6 @@ export abstract class ResourceRegistry<ElementType, MetaType = void, KeyType = s
         if (id === undefined) return false;
         this.keyToIdMap.set(aliasKey, id);
         return true;
-    }
-
-    /**
-     * Removes the element at the specified ID using Swap-and-Pop.
-     * Swaps the last element into slot `id`, updates its key-to-id mapping,
-     * removes the deleted key, and decrements the storage write pointer.
-     * Returns the key of the element that was moved into slot `id` (if any).
-     */
-    public pop(id: number): KeyType | undefined {
-        const lastId = this.storage.writePointer() - 1;
-        if (id < 0 || id > lastId) return undefined;
-
-        const deletedKey = this.idToKey(id);
-        const lastKey = this.idToKey(lastId);
-
-        // Perform swap-and-pop in underlying storage unit
-        this.storage.remove(id);
-
-        if (deletedKey !== undefined) {
-            this.keyToIdMap.delete(deletedKey);
-        }
-
-        if (id < lastId && lastKey !== undefined) {
-            // Update mapping for the moved element
-            this.keyToIdMap.set(lastKey, id);
-            return lastKey;
-        }
-
-        return undefined;
-    }
-
-    /**
-     * Removes the element associated with the given key using Swap-and-Pop.
-     */
-    public popKey(key: KeyType): KeyType | undefined {
-        const id = this.keyToId(key);
-        if (id === undefined) return undefined;
-        return this.pop(id);
     }
 
     // --- Local & Cascading Key-ID Mappings ---
@@ -196,8 +163,4 @@ export abstract class ResourceRegistry<ElementType, MetaType = void, KeyType = s
     }
 
     abstract createStorageUnit(): StorageUnit<ElementType, MetaType>;
-
-    get size(): number {
-        return this.keyToIdMap.size;
-    }
 }

@@ -34,6 +34,16 @@ export class ArrayStorageUnit<ElementType, MetaType> implements StorageUnit<Elem
         }
     }
 
+    /** Number of logically stored items */
+    public get size(): number {
+        return this.data.length;
+    }
+
+    /** Capacity is unbounded for in-memory JS array */
+    public get capacity(): number {
+        return Infinity;
+    }
+
     public writePointer(): number {
         return this.data.length;
     }

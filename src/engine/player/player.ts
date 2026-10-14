@@ -4,6 +4,7 @@ import { PlayerData as PlayerInfo } from "./playerData";
 
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 import * as THREE from "three/webgpu";
+import { Ray, RaycastHit } from "../world/dda";
 
 export class Player {
 	private readonly _id: string;
@@ -11,6 +12,16 @@ export class Player {
 	public camera: THREE.PerspectiveCamera;
 	public controls: PointerLockControls;
 	public canvasTarget: THREE.CanvasTarget;
+
+	private cameraDirection = new THREE.Vector3();
+	private cameraPosition = new THREE.Vector3();
+	private readonly ray: Ray = {
+		origin: this.cameraPosition,
+		direction: this.cameraDirection,
+		maxDistance: 100,
+	};
+
+	private hit: RaycastHit | undefined = undefined;
 
 	// Keyboard state tracking
 	public keys = { w: false, a: false, s: false, d: false, space: false, shift: false };
@@ -131,5 +142,41 @@ export class Player {
 		if (this.keys.shift) {
 			this.camera.position.y -= speed * delta;
 		}
+
+		const hit = this.raycastBlock();
+		if (hit) {
+			this.world!.sceneManager.showSelectionMesh(hit);
+			console.log(`Block hit at: (${hit.block.worldX}, ${hit.block.worldY}, ${hit.block.worldZ})`);
+		} else {
+			this.world!.sceneManager.showSelectionMesh(undefined);
+			console.log("No block hit");
+		}
+	}
+
+	raycastBlock(maxDistance: number = 100): RaycastHit | undefined {
+		this.camera.getWorldPosition(this.cameraPosition);
+		this.camera.getWorldDirection(this.cameraDirection);
+
+		this.ray.maxDistance = maxDistance;
+		return this.world!.rayCaster.dda(this.ray, this.hit);
+	}
+
+	public handlePress(event: MouseEvent) {
+		const hit = this.raycastBlock();
+		if (!hit) {
+			return;
+		}
+
+		const block = hit.block;
+		if (event.button === 0) { // Left click
+			block.setBlock(0); 
+		} else if (event.button === 2) { // Right click
+			block.stepInFace(hit.geometryHitFace!, 1); // Move to the adjacent block in the direction of the hit face
+			const goldBlockDescriptor = this.world!.getBlockDescriptor("minecraft:birch_planks");
+			block.setBlock(goldBlockDescriptor);
+		}
+
+
+		// block.setBlock(goldBlockDescriptor);
 	}
 }

@@ -5,6 +5,7 @@ import { ResourceRegistry } from "./resourceRegistry";
 export type AtlasTile = Uint16Array;
 
 export class AtlasTileRegistry extends ResourceRegistry<Uint16Array, any> {
+    declare public storage: VariableBufferStorageUnit<Uint16Array, any>;
     variationStorage!: VariableBufferStorageUnit<Uint16Array, any>;
     variationWritePointer: number = 1;
 

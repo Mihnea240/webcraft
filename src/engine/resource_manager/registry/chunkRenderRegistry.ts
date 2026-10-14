@@ -75,24 +75,24 @@ export class ChunkRenderRegistry extends ResourceRegistry<ChunkDescriptor, Chunk
                 const blockStart = this.blockAllocator.allocate(newSize);
 
                 meta.quadOffset = blockStart * Constants.QUAD_BUFFER_BLOCK_SIZE;
-                meta.quadCount = quadCount;
             }
+            meta.quadCount = quadCount;
             this.set(chunkId, chunkData);
         }
 
         return chunkId;
     }
 
-    unregisterChunk(chunk: Chunk) {
+    public unregisterChunk(chunk: Chunk): number | undefined {
         const spatialKey = chunk.getHash();
         const chunkId = this.keyToId(spatialKey);
 
         if (chunkId === undefined) {
-            return false;
+            return undefined;
         }
 
         const meta = this.getMeta(chunkId);
-        if (meta.mesh) {
+        if (meta?.mesh) {
             meta.mesh.removeFromParent();
             meta.mesh.geometry.dispose();
             meta.mesh = undefined;
@@ -101,16 +101,31 @@ export class ChunkRenderRegistry extends ResourceRegistry<ChunkDescriptor, Chunk
         const size = Math.ceil(meta.quadCount / Constants.QUAD_BUFFER_BLOCK_SIZE);
         this.blockAllocator.free(meta.quadOffset / Constants.QUAD_BUFFER_BLOCK_SIZE, size);
 
-        const movedKey = this.pop(chunkId);
-        if (movedKey !== undefined) {
-            // A chunk was moved into slot chunkId from the end
-            const movedMeta = this.getMeta(chunkId);
-            if (movedMeta?.mesh) {
-                movedMeta.mesh.userData.chunkOffset = chunkId;
+        const lastId = this.storage.size - 1;
+        let movedSlot: number | undefined = undefined;
+
+        if (chunkId < lastId) {
+            const lastKey = this.idToKey(lastId);
+            const lastMeta = this.getMeta(lastId);
+
+            // Copy binary slot data and metadata from lastId to chunkId
+            this.storage.copySlot(lastId, chunkId);
+
+            if (lastKey !== undefined) {
+                this.keyToIdMap.set(lastKey, chunkId);
             }
+
+            if (lastMeta?.mesh) {
+                lastMeta.mesh.userData.chunkOffset = chunkId;
+            }
+
+            movedSlot = chunkId;
         }
 
-        return true;
+        this.keyToIdMap.delete(spatialKey);
+        this.storage.popSlot();
+
+        return movedSlot;
     }
 }
 

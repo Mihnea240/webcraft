@@ -51,6 +51,14 @@ export class ChunkManager {
         this.quadNode = new Three.StorageBufferNode(this.quadBuffer, TslQuadType);
         this.chunkNode = new Three.StorageBufferNode(this.chunkBuffer, TslChunkDataStruct);
 
+        this.chunkRegistry.storage.onResize = (newBuffer) => {
+            this.chunkBuffer = new Three.StorageBufferAttribute(
+                new Uint32Array(newBuffer),
+                ChunkDataStruct.bucketStride
+            );
+            this.chunkNode.value = this.chunkBuffer;
+        };
+
         this.initMaterial();
     }
 
@@ -81,7 +89,7 @@ export class ChunkManager {
 
     getChunkNeighbors(chunk: Chunk): (Chunk | undefined)[] {
         const [x, y, z] = chunk.worldPosition;
-        return Faces.Vector.map(([dx, dy, dz]) => this.getChunkAt(x + dx, y + dy, z + dz));
+        return Faces.Normals.map(([dx, dy, dz]) => this.getChunkAt(x + dx, y + dy, z + dz));
     }
 
 
@@ -114,13 +122,18 @@ export class ChunkManager {
     removeChunk(chunk: Chunk) {
         this.dirtyChunks.delete(chunk);
         const hash = chunk.getHash();
-        this.chunkRegistry.unregisterChunk(chunk);
+        const movedChunkId = this.chunkRegistry.unregisterChunk(chunk);
         this.loadedChunks.delete(hash);
+
+        if (movedChunkId !== undefined) {
+            this.chunkBuffer.addUpdateRange(movedChunkId * ChunkDataStruct.bucketStride, ChunkDataStruct.bucketStride);
+            this.chunkBuffer.needsUpdate = true;
+        }
     }
+
 
     meshChunks(budget?: number) {
         if (this.dirtyChunks.size === 0) return;
-        console.log(`[ChunkManager] Meshing ${this.dirtyChunks.size} dirty chunks...`);
 
         const pipeline = this.world.resourcePack?.pipeline;
         const scene = this.world.sceneManager.scene;
@@ -142,6 +155,7 @@ export class ChunkManager {
             const chunkId = this.chunkRegistry.registerChunk(chunk, size);
             const meta = this.chunkRegistry.getMeta(chunkId);
 
+            console.log(`[ChunkManager] Meshed chunk at (${chunk.worldPosition.join(", ")}) with ${size} quads.`);
             if (size > 0) {
                 this.quadBuffer.set(quadBuffer, meta.quadOffset * QuadStruct.bucketStride);
                 this.quadBuffer.addUpdateRange(meta.quadOffset * QuadStruct.bucketStride, size * QuadStruct.bucketStride);

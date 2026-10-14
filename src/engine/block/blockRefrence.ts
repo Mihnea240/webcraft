@@ -1,5 +1,6 @@
 import { Chunk } from "@engine/chunk/";
 import { BlockDescriptor } from "../resource_manager/registry/blockTypeRegistry";
+import Faces from "../utils/faces";
 import { World } from "../world";
 import { BlockDescriptorView } from "./blockDescriptorView";
 
@@ -82,6 +83,11 @@ export class BlockRefrence {
         return true;
     }
 
+    stepInFace(face: number, distance: number): boolean {
+        const normal = Faces.Normals[face];
+        return this.step(normal[0] * distance, normal[1] * distance, normal[2] * distance);
+    }
+
     getDescriptor(): BlockDescriptor | undefined {
         if (!this.chunk || !this.chunk.data) return undefined;
         const palletId = this.chunk.data.get(this.localX, this.localY, this.localZ);
@@ -92,7 +98,39 @@ export class BlockRefrence {
     setBlock(descriptor: BlockDescriptor): this {
         if (this.chunk) {
             this.chunk.placeBlock(this.localX, this.localY, this.localZ, descriptor);
+
+            if (this.localX === 0) {
+                const neighborChunk = this.world.chunkManager.getChunkAt(this.chunkX - 1, this.chunkY, this.chunkZ);
+                neighborChunk?.markDirty();
+            } else if( this.localX === Chunk.SIZE - 1) {
+                const neighborChunk = this.world.chunkManager.getChunkAt(this.chunkX + 1, this.chunkY, this.chunkZ);
+                neighborChunk?.markDirty();
+            }
+
+            if (this.localY === 0) {
+                const neighborChunk = this.world.chunkManager.getChunkAt(this.chunkX, this.chunkY - 1, this.chunkZ);
+                neighborChunk?.markDirty();
+            } else if( this.localY === Chunk.SIZE - 1) {
+                const neighborChunk = this.world.chunkManager.getChunkAt(this.chunkX, this.chunkY + 1, this.chunkZ);
+                neighborChunk?.markDirty();
+            }
+
+            if (this.localZ === 0) {
+                const neighborChunk = this.world.chunkManager.getChunkAt(this.chunkX, this.chunkY, this.chunkZ - 1);
+                neighborChunk?.markDirty();
+            } else if( this.localZ === Chunk.SIZE - 1) {
+                const neighborChunk = this.world.chunkManager.getChunkAt(this.chunkX, this.chunkY, this.chunkZ + 1);
+                neighborChunk?.markDirty();
+            }
         }
+        return this;
+    }
+
+    deleteBlock(): this {
+        if (this.chunk) {
+            this.chunk.placeBlock(this.localX, this.localY, this.localZ, 0);
+        }
+        
         return this;
     }
 

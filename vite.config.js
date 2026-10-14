@@ -2,7 +2,22 @@ import { defineConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
-	plugins: [tsconfigPaths()],
+	plugins: [
+		tsconfigPaths(),
+		{
+			name: 'root-redirect',
+			configureServer(server) {
+				server.middlewares.use((req, res, next) => {
+					if (req.url === '/' || req.url === '/demo') {
+						res.writeHead(302, { Location: '/demo/' });
+						res.end();
+						return;
+					}
+					next();
+				});
+			}
+		}
+	],
 	resolve: {
 		dedupe: ['three'] // Force a single instance of Three.js
 	},

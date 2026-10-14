@@ -4,3 +4,6 @@ export * from "./atlasTileRegistry";
 export * from "./atlasRegistry";
 export * from "./cubeGeometryRegistry";
 export * from "./blockModelRegistry";
+export * from "./chunkRenderRegistry";
+export * from "./blockTypeRegistry";
+export * from "./cullingRegistry";
