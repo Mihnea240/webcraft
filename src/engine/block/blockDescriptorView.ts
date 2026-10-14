@@ -1,6 +1,7 @@
 import type { World } from "@engine/world";
 import { DataViewPacker } from "bitpacker";
 import { BlockDescriptor, BlockPermutation, BlockPermutationRegistry, BlockTypeRegistry } from "src/engine/resource_manager/registry/blockTypeRegistry";
+import { ComponentConstructor } from "./componentRegistry";
 import { BlockType } from "./type";
 
 export const enum RemeshFlags {
@@ -65,6 +66,13 @@ export class BlockDescriptorView {
 
         packer.setBuffer(this.tempArray.buffer);
         return packer.view;
+    }
+
+    getComponent(ctor: ComponentConstructor) {
+        const type = this.getBlockType();
+        const perm = this.getBlockPermutation();
+
+        return perm?.getComponent(type!, ctor);
     }
 
     update() { 

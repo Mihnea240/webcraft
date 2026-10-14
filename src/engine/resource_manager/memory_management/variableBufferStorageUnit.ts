@@ -22,7 +22,12 @@ export class VariableBufferStorageUnit<T extends TypedArray, MetaType> implement
     
     private isCheckedOut = false;
     private allocatedLength = 0; // Number of elements allocated in the array
+    public size = 0; // Number of logically stored items
+    public readonly capacity = undefined;
     private bytesPerElement: number;
+
+    /** Simple callback invoked when backing ArrayBuffer doubles/reallocates */
+    public onResize?: (newBuffer: ArrayBuffer) => void;
 
     constructor(
         private ctor: { new (buffer: ArrayBuffer, byteOffset?: number, length?: number): T },
@@ -32,6 +37,17 @@ export class VariableBufferStorageUnit<T extends TypedArray, MetaType> implement
         this.bytesPerElement = (ctor as any).BYTES_PER_ELEMENT || 1;
         this.buffer = new ArrayBuffer(initialElements * this.bytesPerElement);
         this.array = new ctor(this.buffer);
+    }
+
+    private ensureCapacity(requiredElements: number): void {
+        const requiredBytes = requiredElements * this.bytesPerElement;
+        if (requiredBytes > this.buffer.byteLength) {
+            let nextSize = this.buffer.byteLength * 2;
+            while (nextSize < requiredBytes) {
+                nextSize *= 2;
+            }
+            this.resizeBuffer(nextSize);
+        }
     }
 
     public get(id: number): T | undefined {
@@ -68,11 +84,9 @@ export class VariableBufferStorageUnit<T extends TypedArray, MetaType> implement
         }
         const id = this.allocatedLength; // Starting element index is the ID
         this.allocatedLength += value.length;
+        this.size++;
 
-        const requiredBytes = this.allocatedLength * this.bytesPerElement;
-        if (requiredBytes > this.buffer.byteLength) {
-            this.resizeBuffer(this.buffer.byteLength * 2);
-        }
+        this.ensureCapacity(this.allocatedLength);
 
         // Fast memory copy (memcpy) into the contiguous array
         this.array.set(value, id);
@@ -83,11 +97,6 @@ export class VariableBufferStorageUnit<T extends TypedArray, MetaType> implement
         }
 
         return id;
-    }
-
-    public remove(id: number): void {
-        // Variable-length stream buffers do not support in-place swap-and-pop removal
-        throw new Error("Removal is not supported on VariableBufferStorageUnit");
     }
 
     // --- Transferable Checkout/Return for Web Workers ---
@@ -129,9 +138,16 @@ export class VariableBufferStorageUnit<T extends TypedArray, MetaType> implement
         new Uint8Array(newBuffer).set(new Uint8Array(this.buffer));
         this.buffer = newBuffer;
         this.array = new this.ctor(newBuffer);
+        this.onResize?.(newBuffer);
     }
 
-    placeArrayAt(id: number, value: number[]) { 
+    public placeArrayAt(id: number, value: number[]) { 
+        const requiredElements = id + 1 + value.length;
+        this.ensureCapacity(requiredElements);
+        if (requiredElements > this.allocatedLength) {
+            this.allocatedLength = requiredElements;
+        }
+        this.size++;
         this.array[id] = value.length;
         this.array.set(value, id + 1);
     }

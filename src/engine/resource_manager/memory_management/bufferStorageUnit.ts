@@ -10,6 +10,9 @@ export class BufferStorageUnit<TSchema extends Struct<any>, MetaType> implements
     private allocatedLength = 0;
     private elementStride: number;
 
+    /** Simple callback invoked when backing ArrayBuffer doubles/reallocates */
+    public onResize?: (newBuffer: ArrayBuffer) => void;
+
     constructor(schema: TSchema, initialSize: number = 4096, public useMetadata: boolean = true) {
         this.elementStride = schema.stride;
         this._buffer = new ArrayBuffer(initialSize * this.elementStride);
@@ -19,6 +22,16 @@ export class BufferStorageUnit<TSchema extends Struct<any>, MetaType> implements
 
     get buffer() { 
         return this._buffer;
+    }
+
+    /** Number of logically stored items */
+    public get size(): number {
+        return this.allocatedLength;
+    }
+
+    /** Number of items that fit before reallocation */
+    public get capacity(): number {
+        return Math.floor(this._buffer.byteLength / this.elementStride);
     }
 
     public get(id: number) {
@@ -55,7 +68,11 @@ export class BufferStorageUnit<TSchema extends Struct<any>, MetaType> implements
 
         const requiredBytes = this.allocatedLength * this.elementStride;
         if (requiredBytes > this._buffer.byteLength) {
-            this.resizeBuffer(this._buffer.byteLength * 2);
+            let nextSize = this._buffer.byteLength * 2;
+            while (nextSize < requiredBytes) {
+                nextSize *= 2;
+            }
+            this.resizeBuffer(nextSize);
         }
 
         // Zero out the newly allocated slot in the buffer to guarantee clean defaults
@@ -76,30 +93,37 @@ export class BufferStorageUnit<TSchema extends Struct<any>, MetaType> implements
         return id;
     }
 
-    public remove(id: number): void {
-        if (id < 0 || id >= this.allocatedLength) return;
+    /** Copies the struct data and metadata from fromId to toId */
+    public copySlot(fromId: number, toId: number): void {
+        const destOffset = toId * this.elementStride;
+        const srcOffset = fromId * this.elementStride;
 
-        const lastId = this.allocatedLength - 1;
+        new Uint8Array(this._buffer, destOffset, this.elementStride).set(
+            new Uint8Array(this._buffer, srcOffset, this.elementStride)
+        );
 
-        if (id < lastId) {
-            // Swap last element byte slice into the deleted slot
-            const destOffset = id * this.elementStride;
-            const srcOffset = lastId * this.elementStride;
-
-            new Uint8Array(this._buffer, destOffset, this.elementStride).set(
-                new Uint8Array(this._buffer, srcOffset, this.elementStride)
-            );
-
-            if (this.useMetadata) {
-                this.metadataTable[id] = this.metadataTable[lastId];
-            }
+        if (this.useMetadata) {
+            this.metadataTable[toId] = this.metadataTable[fromId];
         }
+    }
 
+    /** Pops the last allocated slot */
+    public popSlot(): void {
+        if (this.allocatedLength <= 0) return;
         if (this.useMetadata) {
             this.metadataTable.pop();
         }
-
         this.allocatedLength--;
+    }
+
+    /** Swaps the last item into the given id and pops the last slot */
+    public swapAndPop(id: number): void {
+        if (id < 0 || id >= this.allocatedLength) return;
+        const lastId = this.allocatedLength - 1;
+        if (id < lastId) {
+            this.copySlot(lastId, id);
+        }
+        this.popSlot();
     }
 
     public checkoutBuffer(): ArrayBuffer {
@@ -139,5 +163,6 @@ export class BufferStorageUnit<TSchema extends Struct<any>, MetaType> implements
         new Uint8Array(newBuffer).set(new Uint8Array(this._buffer));
         this._buffer = newBuffer;
         this.packer.setBuffer(newBuffer);
+        this.onResize?.(newBuffer);
     }
 }

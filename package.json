@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:demo": "vite --open demo/index.html",
-    "dev:tests": "vite --open tests/index.html",
+    "dev:demo": "vite --open /demo/index.html",
+    "dev:tests": "vite --open /tests/index.html",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "fetch:resources": "node scripts/fetch-default-pack.mjs",
@@ -16,8 +16,8 @@
   "dependencies": {
     "bitpacker": "file:../bitpacker",
     "fflate": "^0.8.3",
+    "idb": "^8.0.4",
     "jpeg-js": "^0.4.4",
-    "jszip": "^3.10.1",
     "molang": "^2.0.1",
     "stats.js": "^0.17.0",
     "three": "^0.186.1",

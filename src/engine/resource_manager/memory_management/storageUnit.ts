@@ -2,6 +2,12 @@ export interface StorageUnit<ElementType, MetaType> {
     // Flag indicating whether this storage unit uses metadata
     useMetadata: boolean;
 
+    /** Number of logically stored items in this storage unit. */
+    readonly size: number;
+
+    /** Number of items that fit before reallocation (undefined for variable-length storage). */
+    readonly capacity?: number;
+
     // Get the main resource by its ID
     get(id: number): ElementType | undefined;
     // Set the main resource at the specified location (supports partial updates)
@@ -18,8 +24,8 @@ export interface StorageUnit<ElementType, MetaType> {
     // Add a new resource to the storage unit, returning its ID (supports partial elements)
     add(value?: Partial<ElementType>, meta?: MetaType): number;
 
-    // Removes a resource at the specified ID using swap-and-pop
-    remove(id: number): void;
+    // Simple callback invoked when backing buffer is reallocated
+    onResize?: (newBuffer: ArrayBuffer) => void;
 
     // Exports the internal metadata table (excluding raw binary buffers)
     exportMetadata(): {

@@ -168,10 +168,15 @@ export class Player {
 		}
 
 		const block = hit.block;
-		block.stepInFace(hit.geometryHitFace!, 1); // Move to the adjacent block in the direction of the hit face
-		const goldBlockDescriptor = this.world!.getBlockDescriptor("minecraft:birch_planks");
+		if (event.button === 0) { // Left click
+			block.setBlock(0); 
+		} else if (event.button === 2) { // Right click
+			block.stepInFace(hit.geometryHitFace!, 1); // Move to the adjacent block in the direction of the hit face
+			const goldBlockDescriptor = this.world!.getBlockDescriptor("minecraft:birch_planks");
+			block.setBlock(goldBlockDescriptor);
+		}
 
-		block.setBlock(goldBlockDescriptor);
-		// block.setBlock(0);
+
+		// block.setBlock(goldBlockDescriptor);
 	}
 }

@@ -170,7 +170,7 @@ export class Raycaster {
             }
 
             const descriptor = block.getDescriptor();
-            if (descriptor === undefined || descriptor === -1) {
+            if (!descriptor) {
                 return false;
             }
 

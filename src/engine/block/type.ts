@@ -78,8 +78,8 @@ export class BlockType {
     }
 
     bindToRp(rp: ResourcePack) {
-        this.states.bindToRp(this, rp);
-        this.permutations.bindToRp(this, rp);
+        this.states?.bindToRp(this, rp);
+        this.permutations?.bindToRp(this, rp);
     }
 
     /** Dispatches a batch of changed state indices to all interested component listeners */

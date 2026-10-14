@@ -160,7 +160,8 @@ function testWorld(world: World) {
 		world.getBlockDescriptor("minecraft:stone"),
 		world.getBlockDescriptor("minecraft:warped_nylium"),
 		world.getBlockDescriptor("minecraft:diamond_block"),
-		world.getBlockDescriptor("minecraft:warped_stairs")
+		world.getBlockDescriptor("minecraft:warped_stairs"),
+		// world.getBlockDescriptor("minecraft:redstone"),
 	]
 
 	// Place a dirt ground plane across chunks using the reusable cursor
